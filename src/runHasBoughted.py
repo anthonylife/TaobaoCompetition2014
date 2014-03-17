@@ -51,9 +51,9 @@ def genUserBoughtBySort(train_file):
             uid = entry[0]
             pid = entry[1]
             if pid in user_bought[uid]:
-                user_bought[uid][pid] = 1
-            else:
                 user_bought[uid][pid] += 1
+            else:
+                user_bought[uid][pid] = 1
 
     user_bought_sort = defaultdict()
     for uid in user_bought:
@@ -73,7 +73,7 @@ def genRecommendResult(user_bought_sort, user_average_buy):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-c', type=bool, action='store', dest='tag',
+    parser.add_argument('-c', type=int, action='store', dest='tag',
             help='specify whether to consider the user\'s purchasing power.')
 
     if len(sys.argv) != 3:
@@ -81,12 +81,12 @@ def main():
         sys.exit(1)
 
     para = parser.parse_args()
-    if not para.tag:
+    if para.tag < 0:
         user_bought = genUserBoughtWithoutSort(settings["TRAIN_DATA_FILE"])
         write_submission(user_bought)
     else:
         user_bought_sort = genUserBoughtBySort(settings["TRAIN_DATA_FILE"])
-        user_average_buy = getAverageUserBuy(0)
+        user_average_buy = getAverageUserBuy(para.tag)
         recommend_result = genRecommendResult(user_bought_sort, user_average_buy)
         write_submission(recommend_result)
 

@@ -36,11 +36,11 @@ def genPopularList(train_file):
         if action_type == settings["ACTION_BUY"]:
             pid = entry[1]
             if pid in popular_products:
-                popular_products[pid] = 1
-            else:
                 popular_products[pid] += 1
+            else:
+                popular_products[pid] = 1
     popular_products = sorted(popular_products.items(), key=lambda x:x[1],
-            reverse=False)
+            reverse=True)
     popular_products = [entry[0] for entry in popular_products]
     return popular_products
 
@@ -55,7 +55,7 @@ def genRecommendResult(products, user_average_buy):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-topk', type=str, action='store', dest='topk',
+    parser.add_argument('-topk', type=int, action='store', dest='topk',
             help='specify the number of products to be recommended to\
                     users, 0 stands for using user personal average.')
 

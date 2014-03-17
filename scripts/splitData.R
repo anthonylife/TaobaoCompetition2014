@@ -35,15 +35,18 @@ cat("Loading SETTINGS.json file...\n")
 settings <- fromJSON(file="../SETTINGS.json")
 data <- read.csv(settings$TAR_DATA_FILE, head=T)
 
-testdata <- c()
-traindata <- c()
+testdataidx <- c()
+traindataidx <- c()
 for (i in 1:length(data[,1])) {
     if (judgeTestOrNot(data$month[i], data$day[i])) {
-        testdata <- rbind(testdata, data[i,])
+        testdataidx <- rbind(testdataidx, i)
     } else {
-        traindata <- rbind(traindata, data[i,])
+        traindataidx <- rbind(traindataidx, i)
     }
+    print(i)
 }
 
+traindata <- data[traindataidx, ]
+testdata <- data[testdataidx, ]
 write.csv(traindata, file=settings$TRAIN_DATA_FILE, row.names = FALSE)
 write.csv(testdata, file=settings$TEST_DATA_FILE, row.names = FALSE)
