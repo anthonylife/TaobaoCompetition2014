@@ -1,7 +1,0 @@
-{
-    "SRC_DATA_FILE": "/home/anthonylife/Doctor/Data/Competition/Taobao/t_alibaba_data_utf8.csv",
-    "TAR_DATA_FILE": "/home/anthonylife/Doctor/Code/Competition/taobao2014/data/data_all.csv",
-    "TRAIN_DATA_FILE": "/home/anthonylife/Doctor/Code/Competition/taobao2014/data/trian_data.csv",
-    "TEST_DATA_FILE": "/home/anthonylife/Doctor/Code/Competition/taobao2014/data/test_data.csv",
-    "SPLIT_TIME": "8"
-}
