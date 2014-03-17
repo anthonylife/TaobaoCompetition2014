@@ -21,11 +21,11 @@
 import sys, csv, json, argparse
 from collections import defaultdict
 
-settings = json.loads(open("SETTINGS.json").read())
+settings = json.loads(open("../SETTINGS.json").read())
 
 
 def readTestResult(tFile):
-    data = [feature for feature in csv.reader(tFile)]
+    data = [feature for feature in csv.reader(open(tFile))]
     data = [map(int, feature) for feature in data[1:]]
 
     std_result = defaultdict(set)
@@ -89,7 +89,7 @@ def main():
     pred_result = readPredResult(para.pFile)
 
     [FScore, precision, recall] = evaluation(std_result, pred_result)
-    print 'Evaluation on test data: F-score-->%f, precision-->%f, recall-->%f\n' % (FScore, precision, recall)
+    print 'Evaluation on test data: F-score-->%f, precision-->%f, recall-->%f' % (FScore, precision, recall)
 
 if __name__ == "__main__":
     main()

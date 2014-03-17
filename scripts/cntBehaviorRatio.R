@@ -21,7 +21,7 @@ library("data.table")
 library("rjson")
 cat("Loading SETTINGS.json file...")
 
-settings <- fromJSON(file="SETTINGS.json")
+settings <- fromJSON(file="../SETTINGS.json")
 data <- read.csv(settings$TAR_DATA_FILE, head=T)
 
 user_id <- unique(data$user_id)

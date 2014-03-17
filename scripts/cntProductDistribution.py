@@ -7,7 +7,7 @@ import numpy as np
 
 if __name__ == "__main__":
     print("Loading paths...")
-    paths = json.loads(open("SETTINGS.json").read())
+    paths = json.loads(open("../SETTINGS.json").read())
 
     train_data = [data for data in csv.reader(open(paths["TRAIN_DATA_FILE"]))]
     tr_brandid_set = set([items[1] for items in train_data[1:]])

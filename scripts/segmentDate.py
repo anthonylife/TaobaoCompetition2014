@@ -6,7 +6,7 @@ import csv, json
 
 if __name__ == "__main__":
     print("Loading paths...")
-    paths = json.loads(open("SETTINGS.json").read())
+    paths = json.loads(open("../SETTINGS.json").read())
     data_ins = csv.reader(open(paths["SRC_DATA_FILE"]))
 
     num_alpha = set(['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'])

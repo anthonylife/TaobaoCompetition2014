@@ -8,7 +8,7 @@ from collections import defaultdict
 
 if __name__ == "__main__":
     print("Loading paths...")
-    paths = json.loads(open("SETTINGS.json").read())
+    paths = json.loads(open("../SETTINGS.json").read())
 
     train_data = [data for data in csv.reader(open(paths["TRAIN_DATA_FILE"]))]
     user_history_bought = defaultdict(set)

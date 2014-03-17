@@ -19,13 +19,31 @@
 
 library("data.table")
 library("rjson")
+
+judgeTestOrNot <- function(month, day) {
+    if (month == 7 && day >= 15) {
+        return(TRUE)
+    } else if (month == 8){
+        return(TRUE) 
+    } else {
+        return(FALSE)
+    }
+}
+
 cat("Loading SETTINGS.json file...\n")
 
-settings <- fromJSON(file="SETTINGS.json")
+settings <- fromJSON(file="../SETTINGS.json")
 data <- read.csv(settings$TAR_DATA_FILE, head=T)
 
-testdata <- data[which(data$month==as.integer(settings$SPLIT_TIME)), ]
-traindata <- data[which(data$month!=as.integer(settings$SPLIT_TIME)), ]
+testdata <- c()
+traindata <- c()
+for (i in 1:length(data[,1])) {
+    if (judgeTestOrNot(data$month[i], data$day[i])) {
+        testdata <- rbind(testdata, data[i,])
+    } else {
+        traindata <- rbind(traindata, data[i,])
+    }
+}
 
 write.csv(traindata, file=settings$TRAIN_DATA_FILE, row.names = FALSE)
 write.csv(testdata, file=settings$TEST_DATA_FILE, row.names = FALSE)

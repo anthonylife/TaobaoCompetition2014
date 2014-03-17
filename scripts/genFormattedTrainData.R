@@ -19,7 +19,20 @@
 
 library("data.table")
 library("rjson")
-cat("Loading SETTINGS.json file...")
 
-settings <- fromJSON(file="SETTINGS.json")
+settings <- fromJSON(file="../SETTINGS.json")
+Args <-  commandArgs()
 
+if (is.na(Args[6])) {
+    print("Need to specify which method to choose.")
+    q()
+} 
+
+if (Args[6] == "libmf") {
+    traindata <- read.csv(settings$TRAIN_DATA_FILE, head=T)
+    trainpair <- traindata[which(traindata$type == 1), c(1, 2)]
+    tag <- rep(1, length(trainpair[, 1]))
+    formatted_train_data <- cbind(trainpair, tag)
+    write.table(formatted_train_data, file=settings$LIBMF_TRAIN_FILE,
+                row.names = FALSE,col.names = FALSE, sep = " ")
+}
