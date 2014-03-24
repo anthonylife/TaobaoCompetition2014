@@ -34,13 +34,13 @@ settings = json.loads(open("../../SETTINGS.json").read())
 def genTrainPairForBuy(ratio, data):
     pid_set = set([])
     user_behavior = defaultdict(set)
-    for entry in data[1:]:
+    for entry in data:
         pid_set.add(entry[1])
         user_behavior[entry[0]].add(entry[1])
 
-    train_pair = []
+    train_pairs = []
     targets = []
-    for entry in data[1:]:
+    for entry in data:
         uid = entry[0]
         pid = entry[1]
         action_type = entry[2]
@@ -48,13 +48,44 @@ def genTrainPairForBuy(ratio, data):
         day = entry[4]
         seg_num = calSegNum(month, day)
         if action_type == 1 and seg_num > 1:
-            train_pair.append([uid, pid, month, day])
+            train_pairs.append([uid, pid, month, day])
             neg_pid_set = random.sample(pid_set-user_behavior[uid], ratio)
             targets.append([1])
             for neg_pid in neg_pid_set:
-                train_pair.append([uid, neg_pid, month, day])
+                train_pairs.append([uid, neg_pid, month, day])
                 targets.append([0])
-    return train_pair, targets
+    return train_pairs, targets
+
+
+def genTestPairForBuy(data):
+    uid_set = set([])
+    pid_set = set([])
+    for entry in data:
+        uid = entry[0]
+        pid = entry[1]
+        uid_set.append(uid)
+        pid_set.append(pid)
+    test_pairs = []
+    for uid in uid_set:
+        for pid in pid_set:
+            test_pairs.append([uid, pid, settings["TIME_LAST_MONTH"], settings["TIME_LAST_DAY"]])
+    return test_pairs
+
+
+def getUserAction(data):
+    user_behavior = {}
+    for entry in data:
+        uid = entry[0]
+        pid = entry[1]
+        action_type = entry[2]
+        month = entry[3]
+        day = entry[4]
+        if uid not in user_behavior:
+            user_behavior[uid] = defaultdict(list)
+        #if pid not in user_behavior[uid]:
+        #    user_behavior[uid][pid] = []
+        user_behavior[uid][pid].append([action_type, month, day])
+    return user_behavior
 
 
 def getCFfeature(train_pairs):
@@ -70,29 +101,20 @@ def getCFfeature(train_pairs):
         factor = np.array(map(float, entry[1:]))
         product_factor[pid] = factor
 
-    feature = []
+    features = []
     for pair in train_pairs:
         uid = pair[0]
         pid = pair[1]
-        score = np.dot(user_factor[uid], product_factor[pid])
-        feature.append(score)
-    return feature
+        if pid not in product_factor:
+            features.append([0])
+        else:
+            score = np.dot(user_factor[uid], product_factor[pid])
+            features.append([score])
+    return features
 
 
-def getUPfeature(train_pairs, data):
-    user_behavior = {}
-    for entry in data[1:]:
-        uid = entry[0]
-        pid = entry[1]
-        action_type = entry[2]
-        month = entry[3]
-        day = entry[4]
-        if uid not in user_behavior:
-            user_behavior[uid] = defaultdict(list)
-        if pid not in user_behavior[uid]:
-            user_behavior[pid].append([action_type, month, day])
-
-    feature = []
+def getUPfeature(train_pairs, user_behavior):
+    features = []
     for pair in train_pairs:
         uid = pair[0]
         pid = pair[1]
@@ -102,10 +124,11 @@ def getUPfeature(train_pairs, data):
         week_feature = genWeekUPfeature(user_behavior, uid, pid, month, day)
         month_feature = genMonthUPfeature(user_behavior, uid, pid, month, day)
         history_feature = genHistoryUPfeature(user_behavior, uid, pid, month, day)
-
-    feature = [entry1+entry2+entry3+entry4 for entry1, entry2, entry3, entry4 in
-            zip(day_feature, week_feature, month_feature, history_feature)]
-    return feature
+        features.append(day_feature+week_feature+month_feature+history_feature)
+        print len(features[-1])
+        print features[-1]
+        raw_input()
+    return features
 
 
 def genDayUPfeature(user_behavior, uid, pid, month, day):
@@ -132,9 +155,10 @@ def genDayUPfeature(user_behavior, uid, pid, month, day):
             feature[action_type*3+1] += 1
             tmp_cnt[action_type] += 1
     for i in range(4):
-        feature[i*3] = float(feature[i*3])/tmp_cnt[i]
-        feature[i*3+1] = float(feature[i*3+1])/tmp_cnt[i]
-        feature[i*3+2] = float(feature[i*3+2])/tmp_cnt[i]
+        if tmp_cnt[i] == 0:
+            feature[i*3+2] = 0.0
+        else:
+            feature[i*3+2] = float(feature[i*3+1])/tmp_cnt[i]
     return feature
 
 
@@ -168,9 +192,10 @@ def genWeekUPfeature(user_behavior, uid, pid, month, day):
                 feature[action_type*3+1] += 1
                 tmp_cnt[action_type] += 1
     for i in range(4):
-        feature[i*3] = float(feature[i*3])/tmp_cnt[i]
-        feature[i*3+1] = float(feature[i*3+1])/tmp_cnt[i]
-        feature[i*3+2] = float(feature[i*3+2])/tmp_cnt[i]
+        if tmp_cnt[i] == 0:
+            feature[i*3+2] = 0.0
+        else:
+            feature[i*3+2] = float(feature[i*3+1])/tmp_cnt[i]
     return feature
 
 
@@ -190,9 +215,10 @@ def genMonthUPfeature(user_behavior, uid, pid, month, day):
             feature[action_type*3+1] += 1
             tmp_cnt[action_type] += 1
     for i in xrange(4):
-        feature[i*3] = float(feature[i*3])/tmp_cnt[i]
-        feature[i*3+1] = float(feature[i*3+1])/tmp_cnt[i]
-        feature[i*3+2] = float(feature[i*3+2])/tmp_cnt[i]
+        if tmp_cnt[i] == 0:
+            feature[i*3+2] = 0.0
+        else:
+            feature[i*3+2] = float(feature[i*3+1])/tmp_cnt[i]
     return feature
 
 
@@ -208,50 +234,28 @@ def genHistoryUPfeature(user_behavior, uid, pid, month, day):
             feature[action_type*3+1] += 1
             tmp_cnt[action_type] += 1
     for i in xrange(4):
-        feature[i*3] = float(feature[i*3])/tmp_cnt[i]
-        feature[i*3+1] = float(feature[i*3+1])/tmp_cnt[i]
-        feature[i*3+2] = float(feature[i*3+2])/tmp_cnt[i]
+        if tmp_cnt[i] == 0:
+            feature[i*3+2] = 0.0
+        else:
+            feature[i*3+2] = float(feature[i*3+1])/tmp_cnt[i]
     return feature
 
 
 #def getUfeature(user_behavior, uid, sorted_pid):
     #feature = [0 for i in range(len(2+sorted_pid))]
-def getUfeature(user_behavior, uid, month, day):
-    tar_month = month - 1
-    tar_day = day
+def getUfeature(train_pairs, user_behavior):
+    features = []
+    for pair in train_pairs:
+        uid = pair[0]
+        month = pair[2]
+        day = pair[3]
+        tar_month = month - 1
+        tar_day = day
 
-    feature = [set([]), 0, 0, 0]      #1.last type num;2.ave type num;3.last pro num;4.ave pro num.
-    total_type_num = set([])
-    total_pro_num = 0
-    month_length = calMonthLength(month, day)
-    for pid in user_behavior[uid]:
-        for entry in user_behavior[uid][pid]:
-            action_type = entry[0]
-            src_month = entry[1]
-            src_day = entry[2]
-            if action_type == 1:
-                if src_month < month or (src_month == month and src_day < day):
-                    total_type_num.add(pid)
-                    total_pro_num+=1
-                    if (tar_month == src_month and tar_day <= src_day) or\
-                        (month == src_month and src_day < day):
-                        feature[0].add(pid)
-                        feature[2] += 1
-    feature[0] = len(feature[0])
-    feature[1] = len(total_type_num)/month_length
-    feature[3] = (1.0)*total_pro_num/month_length
-    return feature
-
-
-def getPfeature(user_behavior, pid, month, day):
-    tar_month = month - 1
-    tar_day = day
-
-    feature = [set([]), 0, 0, 0]      #1.last person num;2.ave person num;3.last buy num;4.ave buy num.
-    total_person_num = set([])
-    total_buy_num = 0
-    month_length = calMonthLength(month, day)
-    for uid in user_behavior:
+        feature = [set([]), 0, 0, 0]      #1.last type num;2.ave type num;3.last pro num;4.ave pro num.
+        total_type_num = set([])
+        total_pro_num = 0
+        month_length = calMonthLength(month, day)
         for pid in user_behavior[uid]:
             for entry in user_behavior[uid][pid]:
                 action_type = entry[0]
@@ -259,16 +263,51 @@ def getPfeature(user_behavior, pid, month, day):
                 src_day = entry[2]
                 if action_type == 1:
                     if src_month < month or (src_month == month and src_day < day):
-                        total_person_num.add(uid)
-                        total_buy_num += 1
+                        total_type_num.add(pid)
+                        total_pro_num+=1
                         if (tar_month == src_month and tar_day <= src_day) or\
                             (month == src_month and src_day < day):
-                            feature[0].add(uid)
+                            feature[0].add(pid)
                             feature[2] += 1
-    feature[0] = len(feature[0])
-    feature[1] = len(total_person_num)/month_length
-    feature[3] = (1.0)*total_buy_num/month_length
-    return feature
+        feature[0] = len(feature[0])
+        feature[1] = len(total_type_num)/month_length
+        feature[3] = (1.0)*total_pro_num/month_length
+        features.append(feature)
+    return features
+
+
+def getPfeature(train_pairs, user_behavior):
+    features = []
+    for pair in train_pairs:
+        pid = pair[1]
+        month = pair[2]
+        day = pair[3]
+        tar_month = month - 1
+        tar_day = day
+
+        feature = [set([]), 0, 0, 0]      #1.last person num;2.ave person num;3.last buy num;4.ave buy num.
+        total_person_num = set([])
+        total_buy_num = 0
+        month_length = calMonthLength(month, day)
+        for uid in user_behavior:
+            for pid in user_behavior[uid]:
+                for entry in user_behavior[uid][pid]:
+                    action_type = entry[0]
+                    src_month = entry[1]
+                    src_day = entry[2]
+                    if action_type == 1:
+                        if src_month < month or (src_month == month and src_day < day):
+                            total_person_num.add(uid)
+                            total_buy_num += 1
+                            if (tar_month == src_month and tar_day <= src_day) or\
+                                (month == src_month and src_day < day):
+                                feature[0].add(uid)
+                                feature[2] += 1
+        feature[0] = len(feature[0])
+        feature[1] = len(total_person_num)/month_length
+        feature[3] = (1.0)*total_buy_num/month_length
+        features.append(feature)
+    return features
 
 
 def main():
@@ -289,29 +328,51 @@ def main():
                 + '-u 1(0) -p 1(0)'
 
     para = parser.parse_args()
-    data = csv.reader(open(settings["TRAIN_DATA_FILE"]))
+    data = [entry for entry in csv.reader(open(settings["TRAIN_DATA_FILE"]))]
     data = [map(int, entry) for entry in data[1:]]
 
+    user_behavior = getUserAction(data)
     train_pairs, targets = genTrainPairForBuy(para.ratio, data)
     output_feature = [[] for i in xrange(len(train_pairs))]
     if para.tCF == 1:
-        cf_feature = getCFfeature(train_pairs, data)
+        cf_feature = getCFfeature(train_pairs)
         output_feature = combineFeature(output_feature, cf_feature)
     if para.tUP == 1:
-        up_feature = getUPfeature(train_pairs)
+        up_feature = getUPfeature(train_pairs, user_behavior)
         output_feature = combineFeature(output_feature, up_feature)
     if para.tU == 1:
-        u_feature = getUfeature(train_pairs)
+        u_feature = getUfeature(train_pairs, user_behavior)
         output_feature = combineFeature(output_feature, u_feature)
     if para.tP == 1:
-        p_feature = getPfeature(train_pairs)
+        p_feature = getPfeature(train_pairs, user_behavior)
         output_feature = combineFeature(output_feature, p_feature)
 
     output_feature = combineFeature(output_feature, targets)
     writer = csv.writer(open(settings["GBT_TRAIN_FILE"], "w"), lineterminator="\n")
     writer.writerows(output_feature)
 
-    test_pairs =
+    data = [entry for entry in csv.reader(open(settings["TAR_DATA_FILE"]))]
+    data = [map(int, entry) for entry in data[1:]]
+
+    test_pairs = genTestPairForBuy(data)
+    user_behavior = getUserAction(data)
+    output_feature = [[] for i in xrange(len(test_pairs))]
+    if para.tCF == 1:
+        cf_feature = getCFfeature(test_pairs)
+        output_feature = combineFeature(output_feature, cf_feature)
+    if para.tUP == 1:
+        up_feature = getUPfeature(test_pairs, user_behavior)
+        output_feature = combineFeature(output_feature, up_feature)
+    if para.tU == 1:
+        u_feature = getUfeature(test_pairs, user_behavior)
+        output_feature = combineFeature(output_feature, u_feature)
+    if para.tP == 1:
+        p_feature = getPfeature(test_pairs, user_behavior)
+        output_feature = combineFeature(output_feature, p_feature)
+
+    writer = csv.writer(open(settings["GBT_TEST_FILE"], "w"), lineterminator="\n")
+    writer.writerows(output_feature)
+
 
 
 if __name__ == "__main__":

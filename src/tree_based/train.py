@@ -33,7 +33,7 @@ def main():
     targets = [map(int, entry[-1]) for entry in features_targets]
     features_targets = []
 
-    classifier = RandomForestClassifier(n_estimators=360,
+    classifier = RandomForestClassifier(n_estimators=200,
                                         verbose=2,
                                         n_jobs=4,
                                         min_samples_split=10,
