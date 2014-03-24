@@ -20,7 +20,7 @@
 
 import sys, csv, json
 
-settings = json.loads(open("../SETTINGS.json").read())
+settings = json.loads(open("/home/anthonylife/Doctor/Code/Competition/taobao2014/SETTINGS.json").read())
 
 def calSegNum(month, day):
     if month == 4:
@@ -75,3 +75,17 @@ def getAverageUserBuy(topk):
                 if uid not in user_average_buy:
                     user_average_buy[uid] = topk
     return user_average_buy
+
+
+def combineFeature(data1, data2):
+    return [entry1+entry2 for entry1, entry2 in zip(data1, data2)]
+
+
+def calMonthLength(month, day):
+    day_dif = 0
+    if month == 4:
+        day_dif = day - 14
+    else:
+        day_dif = 14 + day + (month-5)*30
+    return 1.0*day_dif/30
+
