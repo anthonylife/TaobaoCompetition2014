@@ -14,23 +14,8 @@
 #limitations under the License.
 
 ###################################################################
-# Date: 2014/3/18                                                 #
-# Providing some useful functions to Pairwise learning            #
+# Date: 2014/3/24                                                 #
+# Providing some useful functions for tree-based method           #
 ###################################################################
 
-import random, math
 
-def rZero(k):
-    return [0.0 for i in range(k)]
-
-def rGaussian(k):
-    factor = [random.normalvariate(0, 0.01) for i in xrange(k)]
-    for i in xrange(len(factor)):
-        if factor[i] > 1:
-            factor[i] = 1
-        elif factor[i] < -1:
-            factor[i] = -1
-    return factor
-
-def logisticLoss(pos_score, neg_score):
-    return (1-1.0/(1+math.exp(-(pos_score-neg_score))))

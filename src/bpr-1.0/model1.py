@@ -33,14 +33,14 @@ settings = json.loads(open("../../SETTINGS.json").read())
 class BPR():
     def __init__(self):
         # Control variable setting
-        self.niters = 50
+        self.niters = 100
 
         # Hyper-parameter and
-        self.ndim = 10
+        self.ndim = 15
         self.lr = 0.05
         self.reg_user = 0.1
         self.reg_product = 0.1
-        self.csample = 1
+        self.csample = 3
         self.nsample = 5
 
     def model_init(self, train_file, init_choice):
@@ -64,15 +64,14 @@ class BPR():
         for entry in self.train_ins:
             uid = int(entry[0])
             pid = int(entry[1])
-            val = int(entry[2])
 
             if uid not in self.uid_set:
                 self.uid_set.add(uid)
             if pid not in self.pid_set:
                 self.pid_set.add(pid)
             if uid not in self.user_behavior:
-                self.user_behavior[uid] = [set(), set(), [], []]
-            self.user_behavior[uid][val].add(pid)
+                self.user_behavior[uid] = [set(), []]
+            self.user_behavior[uid][0].add(pid)
             if uid not in self.user_factor:
                 self.user_factor[uid] = np.array(init_para(self.ndim))
             if pid not in self.product_factor:
@@ -80,25 +79,13 @@ class BPR():
         self.uid_set = list(self.uid_set)
 
         for uid in self.user_behavior:
-            self.user_behavior[uid][0] = self.user_behavior[uid][0] - self.user_behavior[uid][1]
-            self.user_behavior[uid][2] = list(self.user_behavior[uid][0])
-            self.user_behavior[uid][3] = list(self.user_behavior[uid][1])
+            self.user_behavior[uid][1] = list(self.user_behavior[uid][0])
 
     def generateTrainPairs(self,sample_method,behavior_num,uid,pid,neg_pid_set):
         train_pairs = []
-        random.shuffle(self.user_behavior[uid][2])
         if sample_method == settings["BPR_SAMPLE_UNIFORM"]:
-            if behavior_num == settings["BEHAVIOR_TRIPLE"]:
-                clicked_product = self.user_behavior[uid][2][0:self.csample]
-                for click_pid in clicked_product:
-                    train_pairs.append([pid, click_pid])
-                    for neg_pid in neg_pid_set:
-                        train_pairs.append([click_pid, neg_pid])
-                for neg_pid in neg_pid_set:
-                    train_pairs.append([pid, neg_pid])
-            elif behavior_num == settings["BEHAVIOR_TUPLE"]:
-                for neg_pid in neg_pid_set:
-                    train_pairs.append([pid, neg_pid])
+            for neg_pid in neg_pid_set:
+                train_pairs.append([pid, neg_pid])
         elif sample_method == settings["BPR_SAMPLE_ADAPTIVE"]:
             print 'Not completed.'
         return train_pairs
@@ -107,11 +94,9 @@ class BPR():
         for i in xrange(self.niters):
             random.shuffle(self.uid_set)
             self.lr = self.lr / (1.05)
-            #print self.lr
             for uid in self.uid_set:
-                random.shuffle(self.user_behavior[uid][3])
-                neg_pid_set = random.sample(self.pid_set-self.user_behavior[uid][0]
-                        -self.user_behavior[uid][1], self.nsample)
+                random.shuffle(self.user_behavior[uid][1])
+                neg_pid_set = random.sample(self.pid_set-self.user_behavior[uid][0], self.nsample)
                 #for pid in self.user_behavior[uid][0]:
                 for pid in self.user_behavior[uid][1]:
                     train_pairs = self.generateTrainPairs(sample_method,
@@ -133,9 +118,9 @@ class BPR():
         total_pair = 0
         correct_pair = 0
         for uid in self.user_behavior:
-            for pos_pid in self.user_behavior[uid][1]:
+            for pos_pid in self.user_behavior[uid][0]:
                 for neg_pid in self.pid_set:
-                    if neg_pid in self.user_behavior[uid][1]:
+                    if neg_pid in self.user_behavior[uid][0]:
                         continue
                     total_pair += 1
                     diff_score = np.dot(self.user_factor[uid],self.product_factor[pos_pid])-np.dot(self.user_factor[uid],self.product_factor[neg_pid])
@@ -154,8 +139,7 @@ class BPR():
             for pid in self.pid_set:
                 score = np.dot(self.user_factor[uid], self.product_factor[pid])
                 tmp_result.append([pid, score])
-            tmp_result = sorted(tmp_result, key=lambda x:x[1], reverse=True)
-            sorted_result = [entry[0] for entry in tmp_result]
+            sorted_result = [entry[0] for entry in sorted(tmp_result, key=lambda x:x[1], reverse=True)]
             recommend_result[uid] = sorted_result[:topk]
         return recommend_result
 

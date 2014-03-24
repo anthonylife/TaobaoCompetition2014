@@ -19,16 +19,21 @@
 ###################################################################
 
 import sys, csv, json, argparse
-from collections import defaultdict
+sys.path.append("../")
 from data_io import write_submission
-from tool import getAverageUserBuy
+#from model import BPR
+from model1 import BPR
 
 settings = json.loads(open("../../SETTINGS.json").read())
 
 
-def genTrainFile(behavior_choice):
+def genTrainFile(behavior_num):
     data = csv.reader(open(settings["TRAIN_DATA_FILE"]))
-    data = [map(int, feature) for feature in data[1:]]
+    skip_header_data = []
+    for i, entry in enumerate(data):
+        if i != 0:
+            skip_header_data.append(entry)
+    data = [map(int, feature) for feature in skip_header_data]
 
     train_data = []
     for entry in data:
@@ -37,32 +42,64 @@ def genTrainFile(behavior_choice):
         pid = entry[1]
         if action_type == settings["ACTION_BUY"]:
             train_data.append([uid, pid, 1])
-        if behavior_choice == 'various' and action_type == settings["ACTION_CLICK"]:
+        if behavior_num == settings["BEHAVIOR_TRIPLE"] and action_type == settings["ACTION_CLICK"]:
             train_data.append([uid, pid, 0])
-    writer = csv.writer(open(settings['BPR_TRAIN_FILE', 'w']))
+    writer = csv.writer(open(settings['BPR_TRAIN_FILE'], 'w'))
+    writer.writerows(train_data)
+
+def genTrainFile1(behavior_num):
+    data = csv.reader(open(settings["TRAIN_DATA_FILE"]))
+    skip_header_data = []
+    for i, entry in enumerate(data):
+        if i != 0:
+            skip_header_data.append(entry)
+    data = [map(int, feature) for feature in skip_header_data]
+
+    train_data = []
+    for entry in data:
+        action_type = entry[2]
+        uid = entry[0]
+        pid = entry[1]
+        if action_type == settings["ACTION_CLICK"]:
+            train_data.append([uid, pid, 0])
+    writer = csv.writer(open(settings['BPR_TRAIN_FILE'], 'w'))
     writer.writerows(train_data)
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-Csampling', type=str, action='store',
-            dest='samling_choice', help='specify which sampling method.\n'
+            dest='sample_method', help='specify which sampling method.\n'
             'Currently including three sampling method:\t1.uniform\n\t'
-            '2.adaptive pairwise sampling\n\t3.adaptive listwise sampling')
+            '2.adaptive pairwise sampling')
     parser.add_argument('-Cbehavior', type=str, action='store',
-            dest='behavior_choice', help='specify whether to utilize various behaviours of users')
+            dest='behavior_num', help='specify whether to utilize various behaviours of users')
     parser.add_argument('-Init', type=str, action='store', dest='init_choice',
             help='specify which method to initialize model parameters')
-    parser.
+    parser.add_argument('-Retrain', type=str, action='store',dest='retrain_choice',
+            help='specify which method to initialize model parameters')
+    parser.add_argument('-topk', type=int, action='store', dest='topk',
+            help='specify how many products to be recommended')
 
-    if len(sys.argv) != 9:
-        print 'Command e.g.: python train.py -Init zero(gaussian) '\
-                + '-Csampling uniform(pairwise/listwise) -Cbehavior single(various)'
+    if len(sys.argv) != 11:
+        print 'Command e.g.: python train.py -Retrain True -Init zero(gaussian) '\
+                + '-Csampling uniform(adaptive) -Cbehavior triple(tuple) -topk 4'
         sys.exit(1)
 
     para = parser.parse_args()
-    genTrainFile(para.behavior_choice)
-
+    genTrainFile(para.behavior_num)
+    #genTrainFile1(para.behavior_num)
+    bpr = BPR()
+    if para.retrain_choice == "True":
+        bpr.model_init(settings["BPR_TRAIN_FILE"], para.init_choice)
+        bpr.train(para.sample_method, para.behavior_num)
+        recommend_result = bpr.genRecommendResult(True, para.topk,
+                settings["BPR_TRAIN_FILE"], para.init_choice)
+        write_submission(recommend_result)
+    else:
+        recommend_result = bpr.genRecommendResult(False, para.topk,
+                settings["BPR_TRAIN_FILE"], para.init_choice)
+        write_submission(recommend_result)
 
 if __name__ == "__main__":
     main()
