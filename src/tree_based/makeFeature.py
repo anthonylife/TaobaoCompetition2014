@@ -63,8 +63,8 @@ def genTestPairForBuy(data):
     for entry in data:
         uid = entry[0]
         pid = entry[1]
-        uid_set.append(uid)
-        pid_set.append(pid)
+        uid_set.add(uid)
+        pid_set.add(pid)
     test_pairs = []
     for uid in uid_set:
         for pid in pid_set:
@@ -88,24 +88,14 @@ def getUserAction(data):
     return user_behavior
 
 
-def getCFfeature(train_pairs):
-    user_factor = {}
-    for entry in csv.reader(open(settings["MODEL_USER_FILE"])):
-        uid = int(entry[0])
-        factor = np.array(map(float, entry[1:]))
-        user_factor[uid] = factor
-
-    product_factor = {}
-    for entry in csv.reader(open(settings["MODEL_PRODUCT_FILE"])):
-        pid = int(entry[0])
-        factor = np.array(map(float, entry[1:]))
-        product_factor[pid] = factor
-
+def getCFfeature(train_pairs, user_factor, product_factor):
     features = []
     for pair in train_pairs:
         uid = pair[0]
         pid = pair[1]
         if pid not in product_factor:
+            features.append([0])
+        elif uid not in user_factor:
             features.append([0])
         else:
             score = np.dot(user_factor[uid], product_factor[pid])
@@ -125,9 +115,6 @@ def getUPfeature(train_pairs, user_behavior):
         month_feature = genMonthUPfeature(user_behavior, uid, pid, month, day)
         history_feature = genHistoryUPfeature(user_behavior, uid, pid, month, day)
         features.append(day_feature+week_feature+month_feature+history_feature)
-        print len(features[-1])
-        print features[-1]
-        raw_input()
     return features
 
 
@@ -150,6 +137,7 @@ def genDayUPfeature(user_behavior, uid, pid, month, day):
         src_month = entry[1]
         src_day = entry[2]
         action_type = entry[0]
+
         if tar_month == src_month and tar_day == src_day:
             feature[action_type*3+0] = 1
             feature[action_type*3+1] += 1
@@ -181,13 +169,12 @@ def genWeekUPfeature(user_behavior, uid, pid, month, day):
         src_day = entry[2]
         action_type = entry[0]
         if tar_month == month:
-            if (tar_month == src_month and tar_day <= src_day and src_day <= day):
+            if (tar_month == src_month and tar_day <= src_day and src_day < day):
                 feature[action_type*3+0] = 1
                 feature[action_type*3+1] += 1
                 tmp_cnt[action_type] += 1
         else:
-            if (tar_month == src_month and tar_day <= src_day) or\
-                (month == src_month and src_day < day):
+            if (tar_month == src_month and tar_day <= src_day) or (month == src_month and src_day < day):
                 feature[action_type*3+0] = 1
                 feature[action_type*3+1] += 1
                 tmp_cnt[action_type] += 1
@@ -328,7 +315,18 @@ def main():
                 + '-u 1(0) -p 1(0)'
 
     para = parser.parse_args()
-    data = [entry for entry in csv.reader(open(settings["TRAIN_DATA_FILE"]))]
+    user_factor = {}
+    for entry in csv.reader(open(settings["MODEL_USER_FILE"])):
+        uid = int(entry[0])
+        factor = np.array(map(float, entry[1:]))
+        user_factor[uid] = factor
+
+    product_factor = {}
+    for entry in csv.reader(open(settings["MODEL_PRODUCT_FILE"])):
+        pid = int(entry[0])
+        factor = np.array(map(float, entry[1:]))
+        product_factor[pid] = factor
+    '''data = [entry for entry in csv.reader(open(settings["TRAIN_DATA_FILE"]))]
     data = [map(int, entry) for entry in data[1:]]
 
     user_behavior = getUserAction(data)
@@ -350,29 +348,28 @@ def main():
     output_feature = combineFeature(output_feature, targets)
     writer = csv.writer(open(settings["GBT_TRAIN_FILE"], "w"), lineterminator="\n")
     writer.writerows(output_feature)
-
+'''
     data = [entry for entry in csv.reader(open(settings["TAR_DATA_FILE"]))]
     data = [map(int, entry) for entry in data[1:]]
 
     test_pairs = genTestPairForBuy(data)
     user_behavior = getUserAction(data)
-    output_feature = [[] for i in xrange(len(test_pairs))]
-    if para.tCF == 1:
-        cf_feature = getCFfeature(test_pairs)
-        output_feature = combineFeature(output_feature, cf_feature)
-    if para.tUP == 1:
-        up_feature = getUPfeature(test_pairs, user_behavior)
-        output_feature = combineFeature(output_feature, up_feature)
-    if para.tU == 1:
-        u_feature = getUfeature(test_pairs, user_behavior)
-        output_feature = combineFeature(output_feature, u_feature)
-    if para.tP == 1:
-        p_feature = getPfeature(test_pairs, user_behavior)
-        output_feature = combineFeature(output_feature, p_feature)
-
     writer = csv.writer(open(settings["GBT_TEST_FILE"], "w"), lineterminator="\n")
-    writer.writerows(output_feature)
-
+    for pair in test_pairs:
+        output_feature = [pair]
+        if para.tCF == 1:
+            cf_feature = getCFfeature([pair], user_factor, product_factor)
+            output_feature = combineFeature(output_feature, cf_feature)
+        if para.tUP == 1:
+            up_feature = getUPfeature([pair], user_behavior)
+            output_feature = combineFeature(output_feature, up_feature)
+        if para.tU == 1:
+            u_feature = getUfeature([pair], user_behavior)
+            output_feature = combineFeature(output_feature, u_feature)
+        if para.tP == 1:
+            p_feature = getPfeature([pair], user_behavior)
+            output_feature = combineFeature(output_feature, p_feature)
+        writer.writerows(output_feature)
 
 
 if __name__ == "__main__":

@@ -13,3 +13,7 @@ method list:
         Code location: src/bpr-1.0
 
 ### Weighted regression based method
+
+### Gradient Boosting Tree based method
+        code location: src/tree_based
+

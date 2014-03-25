@@ -19,9 +19,9 @@
 ###################################################################
 
 import sys, csv, json
-from collections import defaultdict
+import pickle
 
-settings = json.loads(open("../SETTINGS.json").read())
+settings = json.loads(open("/home/anthonylife/Doctor/Code/Competition/taobao2014/SETTINGS.json").read())
 
 def write_submission(user_recommend_result):
     wfd = open(settings["SUBMISSION_PATH"], "w")
@@ -33,3 +33,14 @@ def write_submission(user_recommend_result):
             else:
                 wfd.write("%d," % pid)
     wfd.close()
+
+def save_model(model):
+    paths = json.loads(open("SETTINGS.json").read())
+    out_path = paths["model_path"]
+    pickle.dump(model, open(out_path, "w"))
+
+def load_model():
+    paths = json.loads(open("SETTINGS.json").read())
+    in_path = paths["model_path"]
+    return pickle.load(open(in_path))
+
