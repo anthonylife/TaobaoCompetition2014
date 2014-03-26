@@ -158,7 +158,8 @@ def main():
     tmp_cnt = np.array([0 for i in range(16)])
 
     print "Start generating features...."
-    for i, pair in enumerate(test_pairs):
+    a = time.clock()
+    for ii, pair in enumerate(test_pairs):
         output_feature[0:2] = pair[0:2]
         if para.tCF == 1:
             if pid not in product_factor:
@@ -229,9 +230,9 @@ def main():
 
         writer.writerow(output_feature)
         output_feature = np.array([0.0 for i in range(59)])
-        if i % 10000 == 0:
-            print "\r%d..." % i
-
+        if ii % 10000 == 0:
+            print "\r%d, cost time: %.1f seconds" % (ii, time.clock() - a)
+            a = time.clock()
 
 if __name__ == "__main__":
     main()
