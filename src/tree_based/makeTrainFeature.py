@@ -326,7 +326,7 @@ def main():
         pid = int(entry[0])
         factor = np.array(map(float, entry[1:]))
         product_factor[pid] = factor
-    '''data = [entry for entry in csv.reader(open(settings["TRAIN_DATA_FILE"]))]
+    data = [entry for entry in csv.reader(open(settings["TRAIN_DATA_FILE"]))]
     data = [map(int, entry) for entry in data[1:]]
 
     user_behavior = getUserAction(data)
@@ -348,8 +348,8 @@ def main():
     output_feature = combineFeature(output_feature, targets)
     writer = csv.writer(open(settings["GBT_TRAIN_FILE"], "w"), lineterminator="\n")
     writer.writerows(output_feature)
-'''
-    data = [entry for entry in csv.reader(open(settings["TAR_DATA_FILE"]))]
+
+    '''data = [entry for entry in csv.reader(open(settings["TAR_DATA_FILE"]))]
     data = [map(int, entry) for entry in data[1:]]
 
     test_pairs = genTestPairForBuy(data)
@@ -369,7 +369,7 @@ def main():
         if para.tP == 1:
             p_feature = getPfeature([pair], user_behavior)
             output_feature = combineFeature(output_feature, p_feature)
-        writer.writerows(output_feature)
+        writer.writerows(output_feature)'''
 
 
 if __name__ == "__main__":
