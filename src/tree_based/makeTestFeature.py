@@ -35,8 +35,8 @@ def genTestPairForBuy(data):
     uid_set = set([])
     pid_set = set([])
     for entry in data:
-        uid = entry[0]
-        pid = entry[1]
+        uid = int(entry[0])
+        pid = int(entry[1])
         uid_set.add(uid)
         pid_set.add(pid)
     test_pairs = []
@@ -110,36 +110,40 @@ def main():
     user_bought = {}
     for uid in user_behavior:
         user_bought[uid] = [0.0 for i in xrange(4)]
-        total_num = 0
-        product_set = [set([]) for i in xrange(4)]
+        total_num = [0 for i in xrange(3)]
+        product_set = [set([]) for i in xrange(3)]
         for pid in user_behavior[uid]:
             for entry in user_behavior[uid][pid]:
                 if entry[0] == 1:
                     seg_num = calSegNum(entry[1], entry[2])
                     product_set[seg_num-1].add(pid)
-                    total_num+= 1
-        user_bought[uid][0] = len(product_set[0]) + len(product_set[1]) + len(product_set[2]) + len(product_set[3])
-        user_bought[uid][1] = float(user_bought[uid][0])/4
-        user_bought[uid][2] = total_num
-        user_bought[uid][3] = float(total_num)/4
+                    total_num[seg_num-1]+= 1
+        user_bought[uid][0] = len(product_set[0]) + len(product_set[1]) + len(product_set[2])
+        user_bought[uid][1] = float(user_bought[uid][0])/3
+        user_bought[uid][0] = len(product_set[2])
+        user_bought[uid][2] = total_num[0]+total_num[1]+total_num[2]
+        user_bought[uid][3] = float(user_bought[uid][2])/3
+        user_bought[uid][2] = total_num[2]
 
 
     product_behavior = getProductAction(data)
     product_bought = {}
     for pid in product_behavior:
         product_bought[pid] = [0.0 for i in xrange(4)]
-        total_num = 0
-        user_set = [set([]) for i in xrange(4)]
+        total_num = [0 for i in xrange(3)]
+        user_set = [set([]) for i in xrange(3)]
         for uid in product_behavior[pid]:
             for entry in product_behavior[pid][uid]:
                 if entry[0] == 1:
                     seg_num = calSegNum(entry[1], entry[2])
                     user_set[seg_num-1].add(uid)
-                    total_num += 1
-        product_bought[pid][0] = len(user_set[0]) + len(user_set[1]) + len(user_set[2]) + len(user_set[3])
-        product_bought[pid][1] = float(product_bought[pid][0])/4
-        product_bought[pid][2] = total_num
-        product_bought[pid][3] = float(total_num)/4
+                    total_num[seg_num-1] += 1
+        product_bought[pid][0] = len(user_set[0]) + len(user_set[1]) + len(user_set[2])
+        product_bought[pid][1] = float(product_bought[pid][0])/3
+        product_bought[pid][0] = len(user_set[2])
+        product_bought[pid][2] = total_num[0]+total_num[1]+total_num[2]
+        product_bought[pid][3] = float(product_bought[pid][2])/3
+        product_bought[pid][2] = total_num[2]
 
     data = [entry for entry in csv.reader(open(settings["TAR_DATA_FILE"]))]
     data = [map(int, entry) for entry in data[1:]]
@@ -147,34 +151,38 @@ def main():
     user_behavior = getUserAction(data)
     writer = csv.writer(open(settings["GBT_TEST_FILE"], "w"), lineterminator="\n")
 
-    output_feature = np.array([0.0 for i in range(59)])
+    output_feature = [0 for i in range(59)]
     score = 0.0
-    d_day = 15
-    d_month = 8
-    w_day = 9
-    w_month = 8
-    m_day = 16
-    m_month = 7
+    d_day = 14
+    d_month = 7
+    w_day = 8
+    w_month = 7
+    m_day = 14
+    m_month = 6
     tmp_cnt = np.array([0 for i in range(16)])
 
     print "Start generating features...."
     a = time.clock()
     for ii, pair in enumerate(test_pairs):
-        output_feature[0:2] = pair[0:2]
+        uid = pair[0]
+        pid = pair[1]
+        output_feature[0] = uid
+        output_feature[1] = pid
+
         if para.tCF == 1:
             if pid not in product_factor:
                 score = 0.0
             elif uid not in user_factor:
                 score = 0.0
             else:
-                score = np.dot(user_factor[pair[0]], product_factor[pair[1]])
+                score = np.dot(user_factor[uid], product_factor[pid])
             output_feature[2] = score
 
         if para.tUP == 1:
-            for entry in user_behavior[pair[0]][pair[1]]:
+            for entry in user_behavior[uid][pid]:
+                action_type = entry[0]
                 src_month = entry[1]
                 src_day = entry[2]
-                action_type = entry[0]
                 if src_month == d_month:
                     if src_day == d_day:
                         output_feature[3+action_type*3] = 1
@@ -205,28 +213,28 @@ def main():
                 tmp_cnt[i] = 0
 
         if para.tU == 1:
-            if pair[0] not in user_bought:
+            if uid not in user_bought:
                 output_feature[51] = 0
                 output_feature[52] = 0
                 output_feature[53] = 0
                 output_feature[54] = 0
             else:
-                output_feature[51] = user_bought[pair[0]][0]
-                output_feature[52] = user_bought[pair[0]][1]
-                output_feature[53] = user_bought[pair[0]][2]
-                output_feature[54] = user_bought[pair[0]][3]
+                output_feature[51] = user_bought[uid][0]
+                output_feature[52] = user_bought[uid][1]
+                output_feature[53] = user_bought[uid][2]
+                output_feature[54] = user_bought[uid][3]
 
         if para.tP == 1:
-            if pair[1] not in product_bought:
+            if pid not in product_bought:
                 output_feature[55] = 0
                 output_feature[56] = 0
                 output_feature[57] = 0
                 output_feature[58] = 0
             else:
-                output_feature[55] = product_bought[pair[1]][0]
-                output_feature[56] = product_bought[pair[1]][1]
-                output_feature[57] = product_bought[pair[1]][2]
-                output_feature[58] = product_bought[pair[1]][3]
+                output_feature[55] = product_bought[pid][0]
+                output_feature[56] = product_bought[pid][1]
+                output_feature[57] = product_bought[pid][2]
+                output_feature[58] = product_bought[pid][3]
 
         writer.writerow(output_feature)
         output_feature = np.array([0.0 for i in range(59)])
