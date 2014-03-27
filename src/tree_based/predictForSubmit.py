@@ -28,7 +28,7 @@ settings = json.loads(open("../../SETTINGS.json").read())
 
 
 def getProductSellNum():
-    data = [entry for entry in csv.reader(open(settings["TRAIN_DATA_FILE"]))]
+    data = [entry for entry in csv.reader(open(settings["TAR_DATA_FILE"]))]
     data = [map(int, entry) for entry in data[1:]]
 
     product_selluser = {}
@@ -69,7 +69,7 @@ def main():
         user_product_ids = []
         cache_uid = -1
         finished_num = 0
-        for i, entry in enumerate(csv.reader(open(settings["GBT_TEST_FILE"]))):
+        for i, entry in enumerate(csv.reader(open(settings["GBT_TEST_FILE_FOR_SUBMIT"]))):
             pair = map(float, entry[:2])
             uid, pid = map(int, pair)
             if i == 0:
@@ -99,7 +99,7 @@ def main():
         user_product_ids = []
         cache_uid = -1
         finished_num = 0
-        for i, entry in enumerate(csv.reader(open(settings["GBT_TEST_FILE"]))):
+        for i, entry in enumerate(csv.reader(open(settings["GBT_TEST_FILE_FOR_SUBMIT"]))):
             pair = map(float, entry[:2])
             uid, pid = map(int, pair)
             if i == 0:

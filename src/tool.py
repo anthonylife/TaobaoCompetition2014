@@ -43,6 +43,39 @@ def calSegNum(month, day):
         print 'date exceed specified range...'
         sys.exit(1)
 
+
+def calSegNum1(month, day, time_seg_node):
+    num_seg = len(time_seg_node) - 1
+    for i in range(num_seg):
+        if inTimeInterval(month, day, time_seg_node[i], time_seg_node[i+1]):
+            return i
+    return -1
+
+
+def inTimeInterval(month, day, interval1, interval2):
+    if month > interval1[0]:
+        return False
+    elif month == interval1[0]:
+        if month == interval2[0]:
+            if day < interval1[1] and day >= interval2[1]:
+                return True
+            else:
+                return False
+        elif month > interval2[0]:
+            if day < interval1[1]:
+                return True
+            else:
+                return False
+    else:
+        if month == interval2[0]:
+            if day >= interval2[1]:
+                return True
+            else:
+                return False
+        elif month > interval2[0]:
+            return True
+    return False
+
 def getAverageUserBuy(topk):
     data = [feature for feature in csv.reader(open(settings["TRAIN_DATA_FILE"]))]
     data = [map(int, feature) for feature in data[1:]]
@@ -86,6 +119,36 @@ def calMonthLength(month, day):
     if month == 4:
         day_dif = day - 14
     else:
-        day_dif = 14 + day + (month-5)*30
+        day_dif = 16 + day
+        if month > 5:
+            day_dif += 31
+        if month > 6:
+            day_dif += 30
+        if month > 7:
+            day_dif += 31
     return 1.0*day_dif/30
 
+
+def getTimeSegNode(month, day):
+    start_month = 4
+    start_day = 15
+
+    time_seg_node = []
+    while True:
+        if month - 1 < 4:
+            time_seg_node.append((month, day))
+            time_seg_node.append((start_month, start_day))
+            break
+        elif month - 1 == 4 and day < 15:
+            time_seg_node.append((month, day))
+            time_seg_node.append((start_month, start_day))
+            break
+        else:
+            time_seg_node.append((month, day))
+            month = month - 1
+    return time_seg_node
+
+
+if __name__ == "__main__":
+    print getTimeSegNode(7,18)
+    print calMonthLength(6,16)

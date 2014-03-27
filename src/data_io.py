@@ -35,12 +35,10 @@ def write_submission(user_recommend_result):
     wfd.close()
 
 def save_model(model):
-    paths = json.loads(open("SETTINGS.json").read())
-    out_path = paths["model_path"]
+    out_path = settings["GBT_MODEL_FILE"]
     pickle.dump(model, open(out_path, "w"))
 
 def load_model():
-    paths = json.loads(open("SETTINGS.json").read())
-    in_path = paths["model_path"]
+    in_path = settings["GBT_MODEL_FILE"]
     return pickle.load(open(in_path))
 

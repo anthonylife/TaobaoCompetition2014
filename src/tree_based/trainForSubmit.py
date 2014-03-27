@@ -27,7 +27,7 @@ settings = json.loads(open("../../SETTINGS.json").read())
 
 
 def main():
-    features_targets = [entry for entry in csv.reader(open(settings["GBT_TRAIN_FILE"]))]
+    features_targets = [entry for entry in csv.reader(open(settings["GBT_TRAIN_FILE_FOR_SUBMIT"]))]
 
     features = [map(float, entry[:-1]) for entry in features_targets]
     targets = [map(int, entry[-1]) for entry in features_targets]
