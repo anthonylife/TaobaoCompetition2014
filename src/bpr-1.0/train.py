@@ -22,7 +22,8 @@ import sys, csv, json, argparse
 sys.path.append("../")
 from data_io import write_submission
 #from model import BPR
-from model1 import BPR
+#from model1 import BPR
+from model2 import BPR
 
 settings = json.loads(open("../../SETTINGS.json").read())
 
@@ -66,6 +67,22 @@ def genTrainFile1(behavior_num):
     writer.writerows(train_data)
 
 
+def genTrainFile2():
+    data = [entry for entry in csv.reader(open(settings["TRAIN_DATA_FILE"]))]
+    data = [map(int, entry) for entry in data[1:]]
+    train_data = []
+    for entry in data:
+        uid, pid, action_type = entry[0:3]
+        if action_type == settings["ACTION_CLICK"]:
+            train_data.append([uid, pid, 1])
+        elif action_type == settings["ACTION_COLLECT"] or action_type == settings["ACTION_SHOPPING_CHART"]:
+            train_data.append([uid, pid, 2])
+        elif action_type == settings["ACTION_BUY"]:
+            train_data.append([uid, pid, 3])
+    writer = csv.writer(open(settings['BPR_TRAIN_FILE'], 'w'))
+    writer.writerows(train_data)
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-Csampling', type=str, action='store',
@@ -87,17 +104,20 @@ def main():
         sys.exit(1)
 
     para = parser.parse_args()
-    genTrainFile(para.behavior_num)
+    #genTrainFile(para.behavior_num)
     #genTrainFile1(para.behavior_num)
-    bpr = BPR()
+    genTrainFile2()
+    #bpr = BPR()
+    #bpr1 = BPR()
+    bpr2 = BPR()
     if para.retrain_choice == "True":
-        bpr.model_init(settings["BPR_TRAIN_FILE"], para.init_choice)
-        bpr.train(para.sample_method, para.behavior_num)
-        recommend_result = bpr.genRecommendResult(True, para.topk,
+        bpr2.model_init(settings["BPR_TRAIN_FILE"], para.init_choice)
+        bpr2.train()
+        recommend_result = bpr2.genRecommendResult(True, para.topk,
                 settings["BPR_TRAIN_FILE"], para.init_choice)
         write_submission(recommend_result)
     else:
-        recommend_result = bpr.genRecommendResult(False, para.topk,
+        recommend_result = bpr2.genRecommendResult(False, para.topk,
                 settings["BPR_TRAIN_FILE"], para.init_choice)
         write_submission(recommend_result)
 
