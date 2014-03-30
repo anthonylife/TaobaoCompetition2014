@@ -29,7 +29,7 @@ from collections import defaultdict
 from tool import combineFeature, calSegNum, calMonthLength
 
 settings = json.loads(open("../../SETTINGS.json").read())
-
+TOTAL_MONTH = 3
 
 def genTestPairForBuy(data):
     uid_set = set([])
@@ -42,7 +42,8 @@ def genTestPairForBuy(data):
     test_pairs = []
     for uid in uid_set:
         for pid in pid_set:
-            test_pairs.append([uid, pid, settings["TIME_LAST_MONTH"], settings["TIME_LAST_DAY"]])
+            #test_pairs.append([uid, pid, settings["TIME_LAST_MONTH"], settings["TIME_LAST_DAY"]])
+            test_pairs.append([uid, pid])
     return test_pairs
 
 
@@ -110,40 +111,42 @@ def main():
     user_bought = {}
     for uid in user_behavior:
         user_bought[uid] = [0.0 for i in xrange(4)]
-        total_num = [0 for i in xrange(3)]
-        product_set = [set([]) for i in xrange(3)]
+        total_num = [0 for i in xrange(TOTAL_MONTH)]
+        product_set = [set([]) for i in xrange(TOTAL_MONTH)]
         for pid in user_behavior[uid]:
             for entry in user_behavior[uid][pid]:
                 if entry[0] == 1:
                     seg_num = calSegNum(entry[1], entry[2])
                     product_set[seg_num-1].add(pid)
                     total_num[seg_num-1]+= 1
-        user_bought[uid][0] = len(product_set[0]) + len(product_set[1]) + len(product_set[2])
-        user_bought[uid][1] = float(user_bought[uid][0])/3
-        user_bought[uid][0] = len(product_set[2])
-        user_bought[uid][2] = total_num[0]+total_num[1]+total_num[2]
-        user_bought[uid][3] = float(user_bought[uid][2])/3
-        user_bought[uid][2] = total_num[2]
+        for i in xrange(TOTAL_MONTH):
+            user_bought[uid][0] += len(product_set[i])
+            user_bought[uid][2] += total_num[i]
+        user_bought[uid][1] = float(user_bought[uid][0])/TOTAL_MONTH
+        user_bought[uid][0] = len(product_set[TOTAL_MONTH-1])
+        user_bought[uid][3] = float(user_bought[uid][2])/TOTAL_MONTH
+        user_bought[uid][2] = total_num[TOTAL_MONTH-1]
 
 
     product_behavior = getProductAction(data)
     product_bought = {}
     for pid in product_behavior:
         product_bought[pid] = [0.0 for i in xrange(4)]
-        total_num = [0 for i in xrange(3)]
-        user_set = [set([]) for i in xrange(3)]
+        total_num = [0 for i in xrange(TOTAL_MONTH)]
+        user_set = [set([]) for i in xrange(TOTAL_MONTH)]
         for uid in product_behavior[pid]:
             for entry in product_behavior[pid][uid]:
                 if entry[0] == 1:
                     seg_num = calSegNum(entry[1], entry[2])
                     user_set[seg_num-1].add(uid)
                     total_num[seg_num-1] += 1
-        product_bought[pid][0] = len(user_set[0]) + len(user_set[1]) + len(user_set[2])
-        product_bought[pid][1] = float(product_bought[pid][0])/3
-        product_bought[pid][0] = len(user_set[2])
-        product_bought[pid][2] = total_num[0]+total_num[1]+total_num[2]
-        product_bought[pid][3] = float(product_bought[pid][2])/3
-        product_bought[pid][2] = total_num[2]
+        for i in xrange(TOTAL_MONTH):
+            product_bought[pid][0] += len(user_set[i])
+            product_bought[pid][2] = total_num[i]
+        product_bought[pid][1] = float(product_bought[pid][0])/TOTAL_MONTH
+        product_bought[pid][0] = len(user_set[TOTAL_MONTH-1])
+        product_bought[pid][3] = float(product_bought[pid][2])/TOTAL_MONTH
+        product_bought[pid][2] = total_num[TOTAL_MONTH-1]
 
     data = [entry for entry in csv.reader(open(settings["TAR_DATA_FILE"]))]
     data = [map(int, entry) for entry in data[1:]]

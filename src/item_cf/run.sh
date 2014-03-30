@@ -1,3 +1,3 @@
 #!/bin/sh
 
-python itemcf.py -tv 1.5
+python itemcf.py -tv 17.7
