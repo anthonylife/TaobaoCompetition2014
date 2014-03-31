@@ -69,7 +69,7 @@ def evaluation(std_result, pred_result):
 
     # calculate F-score
     FScore = (2*precision*recall)/(precision+recall)
-
+    print true_pred_num, sum_pred_num, sum_true_num
     return [FScore, precision, recall]
 
 

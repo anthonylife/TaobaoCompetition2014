@@ -36,7 +36,7 @@ INC_RATE = 10
 
 class WMF():
     def __init__(self):
-        self.niters = 20
+        self.niters = 10
 
         # for SGD
         self.ndim1 = 20
@@ -109,6 +109,9 @@ class WMF():
 
             self.user_preference[uid] = np.array(map(self.cal_preference, pseudo_cnt))
             self.user_confidence[uid] = np.array(map(self.cal_confidence, pseudo_cnt))
+            #print self.user_preference[uid][0:10]
+            #print self.user_confidence[uid][0:10]
+            #raw_input()
 
         self.product_preference = {}
         self.product_confidence = {}
@@ -141,11 +144,14 @@ class WMF():
 
 
     def als_train(self):
-        for uid in self.uid_dict:
-            print uid
+        for i, uid in enumerate(self.uid_dict):
+            sys.stdout.write("\rFINISHED UID NUM: %d" % (i+1))
+            sys.stdout.flush()
             uidx = self.uid_dict[uid]
             self.user_factor[uidx] = np.dot(np.dot(np.dot(np.linalg.inv(np.dot(np.dot(np.transpose(self.product_factor), np.diag(self.user_confidence[uid])), self.product_factor)+self.lambda2*np.eye(self.ndim2)), np.transpose(self.product_factor)), np.diag(self.user_confidence[uid])), np.transpose(self.user_preference[uid]))
-        for pid in self.pid_dict:
+        for i, pid in enumerate(self.pid_dict):
+            sys.stdout.write("\rFINISHED PID NUM: %d" % (i+1))
+            sys.stdout.flush()
             pidx = self.pid_dict[pid]
             self.product_factor[pidx] = np.dot(np.dot(np.dot(np.linalg.inv(np.dot(np.dot(np.transpose(self.user_factor),np.diag(self.product_confidence[pid])), self.user_factor)+self.lambda2*np.eye(self.ndim2)), np.transpose(self.user_factor)),np.diag(self.product_confidence[pid])),np.transpose(self.product_preference[pid]))
 

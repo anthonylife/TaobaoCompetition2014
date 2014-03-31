@@ -28,8 +28,8 @@ settings = json.loads(open("../SETTINGS.json").read())
 
 def getUserPreference(click_score, collect_score, buy_score):
     ''' Considering count information  '''
-    data = [feature for feature in csv.reader(open(settings["TRAIN_DATA_FILE"]))]
-    #data = [feature for feature in csv.reader(open(settings["TAR_DATA_FILE"]))]
+    #data = [feature for feature in csv.reader(open(settings["TRAIN_DATA_FILE"]))]
+    data = [feature for feature in csv.reader(open(settings["TAR_DATA_FILE"]))]
     data = [map(int, feature) for feature in data[1:]]
 
     user_preference_score = defaultdict(dict)
@@ -54,16 +54,16 @@ def getUserPreference(click_score, collect_score, buy_score):
 
 def getUserPreference1(click_score, collect_score, buy_score):
     ''' Considering count and time information '''
-    data = [feature for feature in csv.reader(open(settings["TRAIN_DATA_FILE"]))]
-    #data = [feature for feature in csv.reader(open(settings["TAR_DATA_FILE"]))]
+    #data = [feature for feature in csv.reader(open(settings["TRAIN_DATA_FILE"]))]
+    data = [feature for feature in csv.reader(open(settings["TAR_DATA_FILE"]))]
     data = [map(int, feature) for feature in data[1:]]
 
     user_preference_score = defaultdict(dict)
     user_sorted_result = defaultdict(list)
     #factor = [1, 1, 1]
     #factor = [0.2, 0.3, 0.5]
-    factor = [0.2, 0.3, 0.5]
-    #factor = [0.2, 0.3, 0.4, 0.5]
+    #factor = [0.2, 0.3, 0.5]
+    factor = [0.1, 0.15, 0.25, 0.5]
     for entry in data:
         uid, pid, action_type, month, day = entry
         seg_num = calSegNum(month, day)
@@ -115,13 +115,13 @@ def main():
         sys.exit(1)
 
     para = parser.parse_args()
-    user_sorted_result = getUserPreference(para.click_score, para.collect_score, para.buy_score)
-    #user_sorted_result = getUserPreference1(para.click_score, para.collect_score, para.buy_score)
+    #user_sorted_result = getUserPreference(para.click_score, para.collect_score, para.buy_score)
+    user_sorted_result = getUserPreference1(para.click_score, para.collect_score, para.buy_score)
     #for uid in user_sorted_result:
     #    print user_sorted_result[uid][:20]
     #    raw_input()
     recommend_result = genRecommendResultByThreshold(user_sorted_result, para.threshold_value)
-    #recommend_result = genRecommendResultByTopK(user_sorted_result, 1)
+    #recommend_result = genRecommendResultByTopK(user_sorted_result, 4)
     write_submission(recommend_result)
 
 
