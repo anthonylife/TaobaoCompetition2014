@@ -18,7 +18,7 @@
 # contain some useful functions                                   #
 ###################################################################
 
-import sys, csv, json
+import sys, csv, json, datetime, random, math
 
 settings = json.loads(open("/home/anthonylife/Doctor/Code/Competition/taobao2014/SETTINGS.json").read())
 
@@ -147,6 +147,46 @@ def getTimeSegNode(month, day):
             time_seg_node.append((month, day))
             month = month - 1
     return time_seg_node
+
+
+def getDayDiff(month1, day1, month2, day2):
+    d1 = datetime.date(settings["TIME_OF_YEAR"], month1, day1)
+    d2 = datetime.date(settings["TIME_OF_YEAR"], month2, day2)
+    day_diff = d1 - d2
+    return day_diff.days
+
+
+def getUserBehavior(data):
+    user_behavior = {}
+    for entry in data:
+        uid, pid, action_type, month, day = entry
+        if uid not in user_behavior:
+            user_behavior[uid] = [[], [], []]
+        if action_type == 1:
+            user_behavior[uid][0].append([pid, month, day])
+        elif action_type == 2 or action_type == 3:
+            user_behavior[uid][1].append([pid, month, day])
+        elif action_type == 0:
+            user_behavior[uid][2].append([pid, month, day])
+    return user_behavior
+
+
+def rZero(k):
+    return [0.0 for i in range(k)]
+
+
+def rGaussian(k):
+    factor = [random.normalvariate(0, 0.01) for i in xrange(k)]
+    for i in xrange(len(factor)):
+        if factor[i] > 1:
+            factor[i] = 1
+        elif factor[i] < -1:
+            factor[i] = -1
+    return factor
+
+
+def logisticLoss(pos_score, neg_score):
+    return (1-1.0/(1+math.exp(-(pos_score-neg_score))))
 
 
 if __name__ == "__main__":
