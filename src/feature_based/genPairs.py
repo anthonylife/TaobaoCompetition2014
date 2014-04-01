@@ -135,13 +135,13 @@ def main():
         data = [map(int, entry) for entry in data[1:]]
         pairs = genTestPair(data, para.target)
         writer = csv.writer(open(settings["GBT_TEST_PAIR_FOR_VALIDATION"], "w"), lineterminator="\n")
-        writer.writerows(output_result)
+        writer.writerows(pairs)
     elif para.target == 3:
         data = [entry for entry in csv.reader(open(settings["TAR_DATA_FILE"]))]
         data = [map(int, entry) for entry in data[1:]]
         pairs = genTestPair(data, para.target)
         writer = csv.writer(open(settings["GBT_TEST_PAIR_FOR_TEST"], "w"), lineterminator="\n")
-        writer.writerows(output_result)
+        writer.writerows(pairs)
     else:
         print 'Invalid parameter settings...'
         sys.exit(1)

@@ -23,28 +23,13 @@ import sys, csv, json, argparse, math
 sys.path.append("../")
 from collections import defaultdict
 from data_io import write_submission
-from tool import getDayDiff
+from tool import getDayDiff, getUserBehavior
 
 settings = json.loads(open("../../SETTINGS.json").read())
 
 TOP_SIM_NUM = 10
 TOPK = 5
 BELIEF_CNT = 4
-
-
-def getUserBehavior(data):
-    user_behavior = {}
-    for entry in data:
-        uid, pid, action_type, month, day = entry
-        if uid not in user_behavior:
-            user_behavior[uid] = [[], [], []]
-        if action_type == 1:
-            user_behavior[uid][0].append([pid, month, day])
-        elif action_type == 2 or action_type == 3:
-            user_behavior[uid][1].append([pid, month, day])
-        elif action_type == 0:
-            user_behavior[uid][2].append([pid, month, day])
-    return user_behavior
 
 
 def createdInvertedIndex(data):
@@ -172,7 +157,7 @@ def itemSimilarity1(user_inverted_index, click_score, collect_score,
 
     sim_items = {}
     for pid in sim_matrix:
-        #sim_sum = sum([entry[1] for entry in sim_matrix[pid].items()])
+        sim_sum = sum([entry[1] for entry in sim_matrix[pid].items()])
         tmp_items = sorted(sim_matrix[pid].items(), key=lambda x:x[1], reverse=True)
         #sim_items[pid] = [[entry[0], entry[1]/sim_sum] for entry in tmp_items[:TOP_SIM_NUM]]
         sim_items[pid] = tmp_items[:TOP_SIM_NUM]
@@ -319,12 +304,16 @@ def genRecommendResult1(sim_items, user_behavior, click_score, collect_score,
                     user_result[uid][pid1] = 0.0
                 user_result[uid][pid1] += sim_score*click_score*time_penality
 
+    writer = csv.writer(open(settings["CF_FEATURE_FILE"], "w"), lineterminator="\n")
+    #writer = csv.writer(open(settings["CF_FEATURE_FILE_FOR_SUBMIT"], "w"), lineterminator="\n")
     recommend_result = defaultdict(list)
     for uid in user_result:
         for entry in user_result[uid].items():
             pid, score = entry
+            writer.writerow([uid, pid, score])
             if score > t_val:
                 recommend_result[uid].append(pid)
+                #writer.writerow([uid, pid, 1])
 
     return recommend_result
 
@@ -354,6 +343,7 @@ def main():
 
     para = parser.parse_args()
     data = [entry for entry in csv.reader(open(settings["TRAIN_DATA_FILE"]))]
+    #data = [entry for entry in csv.reader(open(settings["TAR_DATA_FILE"]))]
     data = [map(int, entry) for entry in data[1:]]
     user_behavior = getUserBehavior(data)
     user_inverted_index = createdInvertedIndex(data)

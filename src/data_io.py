@@ -34,11 +34,9 @@ def write_submission(user_recommend_result):
                 wfd.write("%d," % pid)
     wfd.close()
 
-def save_model(model):
-    out_path = settings["GBT_MODEL_FILE"]
+def save_model(model, out_path):
     pickle.dump(model, open(out_path, "w"))
 
-def load_model():
-    in_path = settings["GBT_MODEL_FILE"]
+def load_model(in_path):
     return pickle.load(open(in_path))
 

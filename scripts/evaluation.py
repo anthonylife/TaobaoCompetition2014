@@ -73,6 +73,27 @@ def evaluation(std_result, pred_result):
     return [FScore, precision, recall]
 
 
+def getUserBought():
+    data = [entry for entry in csv.reader(open(settings["TRAIN_DATA_FILE"]))]
+    data = [map(int, entry) for entry in data[1:]]
+
+    user_bought = defaultdict(set)
+    for entry in data:
+        uid, pid, action_type = entry[:3]
+        if action_type == 1:
+            user_bought[uid].add(pid)
+    return user_bought
+
+
+def removeAlreadyBought(user_bought, std_result, pred_result):
+    for uid in user_bought:
+        if uid in std_result:
+            std_result[uid] = std_result[uid]-user_bought[uid]
+        if uid in pred_result:
+            pred_result[uid] = pred_result[uid]-user_bought[uid]
+    return std_result, pred_result
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-pFile', type=str, action='store', dest='pFile',
@@ -90,6 +111,12 @@ def main():
 
     [FScore, precision, recall] = evaluation(std_result, pred_result)
     print 'Evaluation on test data: F-score-->%f, precision-->%f, recall-->%f' % (FScore, precision, recall)
+
+    user_bought = getUserBought()
+    std_result, pred_result = removeAlreadyBought(user_bought, std_result, pred_result)
+    [FScore, precision, recall] = evaluation(std_result, pred_result)
+    print 'Evaluation on test data for not buy products: F-score-->%f, precision-->%f, recall-->%f' % (FScore, precision, recall)
+
 
 if __name__ == "__main__":
     main()
