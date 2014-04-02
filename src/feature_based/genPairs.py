@@ -123,7 +123,7 @@ def main():
         writer = csv.writer(open(settings["GBT_TRAIN_PAIR_FOR_VALIDATION"], "w"), lineterminator="\n")
         writer.writerows(output_result)
     elif para.target == 1:
-        data = [entry for entry in csv.reader(settings["TAR_DATA_FILE"])]
+        data = [entry for entry in csv.reader(open(settings["TAR_DATA_FILE"]))]
         data = [map(int, entry) for entry in data[1:]]
         pairs, targets = basicGenTrainPair(data, para.ratio)
         #pairs, targets = popGenPair(data, para.ratio)

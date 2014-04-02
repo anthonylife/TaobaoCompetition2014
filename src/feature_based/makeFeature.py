@@ -25,10 +25,13 @@ import numpy as np
 from collections import defaultdict
 from tool import getCFfeature, getUserBehavior, getLastDay, genDayUPfeature
 from tool import genMonthUPfeature1, getProductPopularity, genProductFeature
-from tool import getLastWeek
+from tool import getLastWeek, getLastHalfMonth, load_factor_model, getLastDate
+from tool import genAnyDateIntervalUPfeature
 
 settings = json.loads(open("../../SETTINGS.json").read())
 
+MONTH_DAY_LENGTH = 30
+CF_TV = 2.5
 
 def main():
     parser = argparse.ArgumentParser()
@@ -69,11 +72,13 @@ def main():
         sys.exit(1)
 
     # Feature: (uid, pid)+(cf score)+(last day feature: action*2)
-    feature_num = 3*2 + 3*2 + 2*3
+    feature_num = 2 + 3*2 + 3*2 + 3*2
     #feature_num = 1+3*2
     #feature_num = 2+1+3*2
     user_behavior = getUserBehavior(data)
     product_popularity = getProductPopularity(data)
+    user_factor = load_factor_model((settings["WMF_MODEL_USER_FILE"]))
+    product_factor = load_factor_model((settings["WMF_MODEL_PRODUCT_FILE"]))
     for i, pair in enumerate(csv.reader(open(file_name))):
         feature_idx = 2
         if para.file_num == 0 or para.file_num == 1:
@@ -93,13 +98,25 @@ def main():
         #feature_idx += 1
 
         # 2.adding cf feature
-        '''if uid in cf_feature:
+        if uid in cf_feature:
             if pid in cf_feature[uid]:
-                output_feature[feature_idx] = cf_feature[uid][pid]
+                if cf_feature[uid][pid] > CF_TV:
+                    output_feature[feature_idx] = 1
+                else:
+                    output_feature[feature_idx] = 0
+                output_feature[feature_idx+1] = 0
             else:
-                output_feature[feature_idx] = 0.0
+                output_feature[feature_idx] = -1
+                output_feature[feature_idx+1] = 1
         else:
-            output_feature[feature_idx] = 0.0
+            output_feature[feature_idx] = -1
+            output_feature[feature_idx+1] = 1
+        feature_idx += 2
+        '''if uid in user_factor and pid in product_factor:
+            output_feature[feature_idx] = np.dot(user_factor[uid],
+                    product_factor[pid])
+        else:
+            output_feature[feature_idx] = -1
         feature_idx += 1'''
 
         # 3.adding last day interaction feature
@@ -116,15 +133,25 @@ def main():
 
         # 4.adding last week interaction feature
         if para.file_num == 2:
-            last_month, last_day = getLastWeek(settings["VALIDATION_TIME_LAST_MONTH"], settings["VALIDATION_TIME_LAST_DAY"]+1)
+            last_month, last_day = getLastWeek(settings["VALIDATION_TIME_LAST_MONTH"], settings["VALIDATION_TIME_LAST_DAY"])
         elif para.file_num == 3:
-            last_month, last_day = getLastWeek(settings["VALIDATION_TIME_LAST_MONTH"], settings["VALIDATION_TIME_LAST_DAY"]+1)
+            last_month, last_day = getLastWeek(settings["TIME_LAST_MONTH"], settings["TIME_LAST_DAY"])
         else:
             last_month, last_day = getLastWeek(month, day)
         output_feature[feature_idx:feature_idx+2*3] = genMonthUPfeature1(user_behavior[uid], pid, month, day, last_month, last_day)
         feature_idx += 2*3
 
-        # 5.adding last month interaction feature
+        # 5.adding half month interaction feature
+        '''if para.file_num == 2:
+            last_month, last_day = getLastHalfMonth(settings["VALIDATION_TIME_LAST_MONTH"], settings["VALIDATION_TIME_LAST_DAY"])
+        elif para.file_num == 3:
+            last_month, last_day = getLastHalfMonth(settings["TIME_LAST_MONTH"], settings["TIME_LAST_DAY"])
+        else:
+            last_month, last_day = getLastHalfMonth(month, day)
+        output_feature[feature_idx:feature_idx+2*3] = genMonthUPfeature1(user_behavior[uid], pid, month, day, last_month, last_day)
+        feature_idx += 2*3'''
+
+        # 6.adding last month interaction feature
         if para.file_num == 2:
             last_month = settings["VALIDATION_TIME_LAST_MONTH"]-1
             last_day = settings["VALIDATION_TIME_LAST_DAY"]
@@ -141,7 +168,17 @@ def main():
                     pid, month, day, last_month, last_day)
         feature_idx += 2*3
 
-        # 6.adding product last day popularity feature
+        # 7.adding every day interaction feature in last month
+        '''if para.file_num == 2:
+            last_month, last_day = getLastDate(settings["VALIDATION_TIME_LAST_MONTH"], settings["VALIDATION_TIME_LAST_DAY"], MONTH_DAY_LENGTH)
+        elif para.file_num == 3:
+            last_month, last_day = getLastDate(settings["TIME_LAST_MONTH"], settings["TIME_LAST_DAY"], MONTH_DAY_LENGTH)
+        else:
+            last_month, last_day = getLastDate(month, day, MONTH_DAY_LENGTH)
+        output_feature[feature_idx:feature_idx+3*MONTH_DAY_LENGTH] = genAnyDateIntervalUPfeature(user_behavior[uid], pid, month, day, last_month, last_day, MONTH_DAY_LENGTH)
+        feature_idx += 3*MONTH_DAY_LENGTH'''
+
+        # 7.adding product last day popularity feature
         '''if para.file_num == 2:
             last_month = settings["VALIDATION_TIME_LAST_MONTH"]
             last_day = settings["VALIDATION_TIME_LAST_DAY"]
@@ -153,6 +190,28 @@ def main():
         output_feature[feature_idx:feature_idx+3] = genProductFeature(product_popularity[pid], month, day, last_month, last_day)
         feature_idx += 3'''
 
+        # 8.adding product last week popularity feature
+        '''if para.file_num == 2:
+            last_month, last_day = getLastWeek(settings["VALIDATION_TIME_LAST_MONTH"], settings["VALIDATION_TIME_LAST_DAY"]+1)
+        elif para.file_num == 3:
+            last_month, last_day = getLastWeek(settings["VALIDATION_TIME_LAST_MONTH"], settings["VALIDATION_TIME_LAST_DAY"]+1)
+        else:
+            last_month, last_day = getLastWeek(month, day)
+        output_feature[feature_idx:feature_idx+3] = genProductFeature(product_popularity[pid], month, day, last_month, last_day)
+        feature_idx += 3'''
+
+        # 9.adding product last month popularity feature
+        '''if para.file_num == 2:
+            last_month = settings["VALIDATION_TIME_LAST_MONTH"]-1
+            last_day = settings["VALIDATION_TIME_LAST_DAY"]
+        elif para.file_num == 3:
+            last_month = settings["TIME_LAST_MONTH"]-1
+            last_day = settings["TIME_LAST_DAY"]-1
+        else:
+            last_month = month-1
+            last_day = day
+        output_feature[feature_idx:feature_idx+3] = genProductFeature(product_popularity[pid], month, day, last_month, last_day)
+        feature_idx += 3'''
 
         if (i%1000) == 0 and i != 0:
             sys.stdout.write("\rFINISHED PAIR NUM: %d. " % (i+1))

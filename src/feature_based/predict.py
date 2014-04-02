@@ -57,6 +57,7 @@ def main():
             cache_uid = uid
         if uid != cache_uid:
             predictions = classifier.predict_proba(features)[:,1]
+            #predictions = classifier.predict(features)
             predictions = list(predictions)
             for (t_uid, t_pid), pred in zip(user_product_ids, predictions):
                 if pred > para.threshold_val:

@@ -19,6 +19,7 @@
 ###################################################################
 
 import sys, csv, json, datetime, random, math
+import numpy as np
 from collections import defaultdict
 
 settings = json.loads(open("/home/anthonylife/Doctor/Code/Competition/taobao2014/SETTINGS.json").read())
@@ -79,6 +80,14 @@ def inTimeInterval(month, day, interval1, interval2):
         elif month > interval2[0]:
             return True
     return False
+
+
+def getIdxFromTimeInterval(month, day, last_month, last_day, date_interval_length):
+    day_diff = getDayDiff(month, day, last_month, last_day)
+    if day_diff < 0 or day_diff >= date_interval_length:
+        return -1
+    return day_diff
+
 
 def getAverageUserBuy(topk):
     data = [feature for feature in csv.reader(open(settings["TRAIN_DATA_FILE"]))]
@@ -175,6 +184,24 @@ def getLastDay(month, day):
 def getLastWeek(month, day):
     if day > 7:
         day = day - 7
+    else:
+        month = month - 1
+        day = MONTH[month-1]+1-day
+    return month, day
+
+
+def getLastHalfMonth(month, day):
+    if day > 15:
+        day = day - 15
+    else:
+        month = month - 1
+        day = MONTH[month-1]+1-day
+    return month, day
+
+
+def getLastDate(month, day, day_length):
+    if day > day_length:
+        day = day - day_length
     else:
         month = month - 1
         day = MONTH[month-1]+1-day
@@ -283,6 +310,20 @@ def genMonthUPfeature1(one_user_behavior, src_pid, src_month, src_day, last_mont
     return feature
 
 
+def genAnyDateIntervalUPfeature(one_user_behavior, src_pid, src_month, src_day, last_month, last_day, date_interval_length):
+    feature = [0 for i in xrange(ACTION_NUM*date_interval_length)]
+    for i in xrange(ACTION_NUM):
+        for entry in one_user_behavior[i]:
+            pid, month, day = entry
+            if pid != src_pid:
+                continue
+            idx = getIdxFromTimeInterval(month, day, last_month, last_day, date_interval_length)
+            if idx >= 0:
+                feature[idx+i*date_interval_length] = 1
+                feature[idx+i*date_interval_length] += 1
+    return feature
+
+
 def genProductFeature(one_product_popularity, src_month, src_day, last_month, last_day):
     feature = [0 for i in xrange(ACTION_NUM)]
     for i in xrange(ACTION_NUM):
@@ -369,6 +410,14 @@ def underSampling(features, ratio):
     features = pos_features + neg_features
     random.shuffle(features)
     return features
+
+
+def load_factor_model(model_path):
+    factor = {}
+    for entry in csv.reader(open(model_path)):
+        tid = int(entry[0])
+        factor[tid] = np.array(map(float, entry[1:]))
+    return factor
 
 
 if __name__ == "__main__":
