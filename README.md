@@ -30,8 +30,13 @@ method list:
 
 ### Weighted regression based method
         Code location: src/wmf
-        
+        Commander: cd src/wmf/; ./run.sh        
 
 ### Gradient Boosting Tree based method
+        Old version:
         code location: src/tree_based
         Commander: cd src/tree_based/; ./run.sh
+        New version:
+        code location: src/feature_based
+        Commander: cd src/feature_based/; ./run.sh
+

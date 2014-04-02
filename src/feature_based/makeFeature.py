@@ -24,6 +24,8 @@ sys.path.append("../")
 import numpy as np
 from collections import defaultdict
 from tool import getCFfeature, getUserBehavior, getLastDay, genDayUPfeature
+from tool import genMonthUPfeature1, getProductPopularity, genProductFeature
+from tool import getLastWeek
 
 settings = json.loads(open("../../SETTINGS.json").read())
 
@@ -67,8 +69,11 @@ def main():
         sys.exit(1)
 
     # Feature: (uid, pid)+(cf score)+(last day feature: action*2)
-    feature_num = 2+1+3*2
+    feature_num = 3*2 + 3*2 + 2*3
+    #feature_num = 1+3*2
+    #feature_num = 2+1+3*2
     user_behavior = getUserBehavior(data)
+    product_popularity = getProductPopularity(data)
     for i, pair in enumerate(csv.reader(open(file_name))):
         feature_idx = 2
         if para.file_num == 0 or para.file_num == 1:
@@ -82,22 +87,22 @@ def main():
             output_feature[:2] = [uid, pid]
 
         # 1.user and item id
-        output_feature[feature_idx] = uid
-        feature_idx += 1
-        output_feature[feature_idx] = pid
-        feature_idx += 1
+        #output_feature[feature_idx] = uid
+        #feature_idx += 1
+        #output_feature[feature_idx] = pid
+        #feature_idx += 1
 
         # 2.adding cf feature
-        if uid in cf_feature:
+        '''if uid in cf_feature:
             if pid in cf_feature[uid]:
                 output_feature[feature_idx] = cf_feature[uid][pid]
             else:
                 output_feature[feature_idx] = 0.0
         else:
             output_feature[feature_idx] = 0.0
-        feature_idx += 1
+        feature_idx += 1'''
 
-        # 3.adding last day feature
+        # 3.adding last day interaction feature
         if para.file_num == 2:
             last_month = settings["VALIDATION_TIME_LAST_MONTH"]
             last_day = settings["VALIDATION_TIME_LAST_DAY"]
@@ -108,6 +113,46 @@ def main():
             last_month, last_day = getLastDay(month, day)
         output_feature[feature_idx:feature_idx+2*3] = genDayUPfeature(user_behavior[uid], pid, last_month, last_day)
         feature_idx += 2*3
+
+        # 4.adding last week interaction feature
+        if para.file_num == 2:
+            last_month, last_day = getLastWeek(settings["VALIDATION_TIME_LAST_MONTH"], settings["VALIDATION_TIME_LAST_DAY"]+1)
+        elif para.file_num == 3:
+            last_month, last_day = getLastWeek(settings["VALIDATION_TIME_LAST_MONTH"], settings["VALIDATION_TIME_LAST_DAY"]+1)
+        else:
+            last_month, last_day = getLastWeek(month, day)
+        output_feature[feature_idx:feature_idx+2*3] = genMonthUPfeature1(user_behavior[uid], pid, month, day, last_month, last_day)
+        feature_idx += 2*3
+
+        # 5.adding last month interaction feature
+        if para.file_num == 2:
+            last_month = settings["VALIDATION_TIME_LAST_MONTH"]-1
+            last_day = settings["VALIDATION_TIME_LAST_DAY"]
+        elif para.file_num == 3:
+            last_month = settings["TIME_LAST_MONTH"]-1
+            last_day = settings["TIME_LAST_DAY"]-1
+        else:
+            last_month = month-1
+            last_day = day
+        #output_feature[feature_idx:feature_idx+3] = genMonthUPfeature1(user_behavior[uid],
+        #            pid, month, day, last_month, last_day)
+        #feature_idx += 3
+        output_feature[feature_idx:feature_idx+2*3] = genMonthUPfeature1(user_behavior[uid],
+                    pid, month, day, last_month, last_day)
+        feature_idx += 2*3
+
+        # 6.adding product last day popularity feature
+        '''if para.file_num == 2:
+            last_month = settings["VALIDATION_TIME_LAST_MONTH"]
+            last_day = settings["VALIDATION_TIME_LAST_DAY"]
+        elif para.file_num == 3:
+            last_month = settings["TIME_LAST_MONTH"]
+            last_day = settings["TIME_LAST_DAY"]
+        else:
+            last_month, last_day = getLastDay(month, day)
+        output_feature[feature_idx:feature_idx+3] = genProductFeature(product_popularity[pid], month, day, last_month, last_day)
+        feature_idx += 3'''
+
 
         if (i%1000) == 0 and i != 0:
             sys.stdout.write("\rFINISHED PAIR NUM: %d. " % (i+1))

@@ -56,7 +56,10 @@ def evaluation(std_result, pred_result):
         if uid in std_result:
             true_pred_num += len(std_result[uid] & pred_result[uid])
         sum_pred_num += len(pred_result[uid])
-    precision = (1.0*true_pred_num)/sum_pred_num
+    if sum_pred_num != 0:
+        precision = (1.0*true_pred_num)/sum_pred_num
+    else:
+        precision = 0.0
 
     # calculate recall
     sum_true_num = 0
@@ -68,7 +71,10 @@ def evaluation(std_result, pred_result):
     recall = (1.0*true_pred_num)/sum_true_num
 
     # calculate F-score
-    FScore = (2*precision*recall)/(precision+recall)
+    if (precision + recall) == 0:
+        FScore = 0
+    else:
+        FScore = (2*precision*recall)/(precision+recall)
     print true_pred_num, sum_pred_num, sum_true_num
     return [FScore, precision, recall]
 
@@ -85,12 +91,23 @@ def getUserBought():
     return user_bought
 
 
-def removeAlreadyBought(user_bought, std_result, pred_result):
-    for uid in user_bought:
+def getUserAction():
+    data = [entry for entry in csv.reader(open(settings["TRAIN_DATA_FILE"]))]
+    data = [map(int, entry) for entry in data[1:]]
+
+    user_bought = defaultdict(set)
+    for entry in data:
+        uid, pid, action_type = entry[:3]
+        user_bought[uid].add(pid)
+    return user_bought
+
+
+def removeAlreadyAction(user_behavior, std_result, pred_result):
+    for uid in user_behavior:
         if uid in std_result:
-            std_result[uid] = std_result[uid]-user_bought[uid]
+            std_result[uid] = std_result[uid]-user_behavior[uid]
         if uid in pred_result:
-            pred_result[uid] = pred_result[uid]-user_bought[uid]
+            pred_result[uid] = pred_result[uid]-user_behavior[uid]
     return std_result, pred_result
 
 
@@ -113,9 +130,14 @@ def main():
     print 'Evaluation on test data: F-score-->%f, precision-->%f, recall-->%f' % (FScore, precision, recall)
 
     user_bought = getUserBought()
-    std_result, pred_result = removeAlreadyBought(user_bought, std_result, pred_result)
+    std_result, pred_result = removeAlreadyAction(user_bought, std_result, pred_result)
     [FScore, precision, recall] = evaluation(std_result, pred_result)
     print 'Evaluation on test data for not buy products: F-score-->%f, precision-->%f, recall-->%f' % (FScore, precision, recall)
+
+    user_behavior = getUserAction()
+    std_result, pred_result = removeAlreadyAction(user_behavior, std_result, pred_result)
+    [FScore, precision, recall] = evaluation(std_result, pred_result)
+    print 'Evaluation on test data for not action products: F-score-->%f, precision-->%f, recall-->%f' % (FScore, precision, recall)
 
 
 if __name__ == "__main__":

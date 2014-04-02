@@ -21,7 +21,8 @@
 import csv, json, sys, argparse
 sys.path.append("../")
 import data_io
-from sklearn.ensemble import RandomForestClassifier, GradientBoostingRegressor
+from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier, GradientBoostingRegressor
+from sklearn.linear_model import LogisticRegression
 
 settings = json.loads(open("../../SETTINGS.json").read())
 
@@ -46,11 +47,28 @@ def main():
     features = [map(float, entry[2:-1]) for entry in features_targets]
     targets = [map(int, entry[-1]) for entry in features_targets]
 
+    '''classifier = GradientBoostingClassifier(n_estimators=50,
+                                        verbose=2,
+                                        n_jobs=1,
+                                        min_samples_split=10,
+                                        random_state=1)'''
     classifier = RandomForestClassifier(n_estimators=50,
                                         verbose=2,
                                         n_jobs=1,
                                         min_samples_split=10,
                                         random_state=1)
+    '''classifier = GradientBoostingClassifier(n_estimators=50,
+                                        verbose=2,
+                                        min_samples_split=10,
+                                        random_state=1)'''
+    '''classifier = LogisticRegression(penalty='l2',
+                                    dual=False,
+                                    tol=0.0001,
+                                    C=1.0,
+                                    fit_intercept=True,
+                                    intercept_scaling=1,
+                                    class_weight=None,
+                                    random_state=None)'''
     classifier.fit(features, targets)
     data_io.save_model(classifier, settings["GBT_MODEL_FILE"])
 
