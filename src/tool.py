@@ -310,6 +310,17 @@ def genMonthUPfeature1(one_user_behavior, src_pid, src_month, src_day, last_mont
     return feature
 
 
+def genHistoryUPfeature(one_user_behavior, src_pid, src_month, src_day):
+    feature = [0 for i in xrange(ACTION_NUM*2)]
+    for i in xrange(ACTION_NUM):
+        for entry in one_user_behavior[i]:
+            pid, month, day = entry
+            if month < src_month or (month==src_month and day < src_day):
+                feature[i] = 1
+                feature[i+ACTION_NUM] += 1
+    return feature
+
+
 def genAnyDateIntervalUPfeature(one_user_behavior, src_pid, src_month, src_day, last_month, last_day, date_interval_length):
     feature = [0 for i in xrange(ACTION_NUM*date_interval_length)]
     for i in xrange(ACTION_NUM):
@@ -366,6 +377,116 @@ def getProductPopularity(data):
             else:
                 product_popularity[pid][2][month*100+day] += 1
     return product_popularity
+
+
+def getProductBuyClickRatio(data):
+    product_history = {}
+    user_click_buy = {}
+    for entry in data:
+        uid, pid, action_type, month, day = entry
+        if action_type == 0:
+            if pid not in product_history:
+                product_history[pid] = [set([]), set([])]
+            product_history[pid][0].add(uid)
+            if uid not in user_click_buy:
+                user_click_buy[uid] = [{}, {}]
+            if pid not in user_click_buy[uid][0]:
+                user_click_buy[uid][0][pid] = month*100+day
+            else:
+                if month*100+day < user_click_buy[uid][0][pid]:
+                    user_click_buy[uid][0][pid] = month*100+day
+        elif action_type == 1:
+            if pid not in product_history:
+                product_history[pid] = [set([]), set([])]
+            product_history[pid][0].add(uid)
+            product_history[pid][1].add(uid)
+            if uid not in user_click_buy:
+                user_click_buy[uid] = [{}, {}]
+            if pid not in user_click_buy[uid][1]:
+                user_click_buy[uid][1][pid] = month*100+day
+            else:
+                if month*100+day > user_click_buy[uid][1][pid]:
+                    user_click_buy[uid][1][pid] = month*100+day
+
+    product_ratio1 = {}
+    for pid in product_history:
+        product_ratio1[pid] = 1.0*len(product_history[pid][1])/len(product_history[pid][0])
+
+    product_ratio2 = {}
+    product_history = {}
+    for uid in user_click_buy:
+        for pid in user_click_buy[uid][0]:
+            if pid not in product_history:
+                product_history[pid] = [0, 0]
+            product_history[pid][0] += 1
+            time = user_click_buy[uid][0][pid]
+            if pid in user_click_buy[uid][1]:
+                if time < user_click_buy[uid][1][pid]:
+                    product_history[pid][1] += 1
+    for pid in product_history:
+        product_ratio2[pid] = 1.0*product_history[pid][1]/product_history[pid][0]
+
+    return product_ratio1, product_ratio2
+
+
+def getProductBuyBuyRatio(data):
+    user_buy_history = defaultdict(dict)
+    for entry in data:
+        uid, pid, action_type, month, day = entry
+        if action_type == 1:
+            if pid not in user_buy_history[uid]:
+                user_buy_history[uid] = defaultdict(set)
+            user_buy_history[uid][pid].add(month*100+day)
+
+    buy_buy_ratio = {}
+    buy_buy_cnt = {}
+    for uid in user_buy_history:
+        for pid in user_buy_history[uid]:
+            if pid not in buy_buy_cnt:
+                buy_buy_cnt[pid] = [0, 0]
+            if len(user_buy_history[uid][pid]) > 1:
+                buy_buy_cnt[pid][1] += 1
+            buy_buy_cnt[pid][0] += 1
+    for pid in buy_buy_cnt:
+        buy_buy_ratio[pid] = 1.0*buy_buy_cnt[pid][1]/buy_buy_cnt[pid][0]
+
+    return buy_buy_ratio
+
+def getUserBuyClickRatio(data):
+    user_buy_history1 = {}
+    user_buy_history2 = {}
+
+    for entry in data:
+        uid, pid, action_type, month, day = entry
+        if action_type == 1:
+            if uid not in user_buy_history1:
+                user_buy_history1[uid] = [0, 0]
+            if uid not in user_buy_history2:
+                user_buy_history2[uid] = [set([]), set([])]
+            user_buy_history1[uid][1] += 1
+            user_buy_history2[uid][1].add(pid)
+        elif action_type == 0:
+            if uid not in user_buy_history1:
+                user_buy_history1[uid] = [0, 0]
+            if uid not in user_buy_history2:
+                user_buy_history2[uid] = [set([]), set([])]
+            user_buy_history1[uid][0] += 1
+            user_buy_history2[uid][0].add(pid)
+
+    user_buy_click_ratio = {}
+    for uid in user_buy_history1:
+        if uid not in user_buy_click_ratio:
+            user_buy_click_ratio[uid] = [0.0, 0.0]
+        if user_buy_history1[uid][1] != 0:
+            user_buy_click_ratio[uid][0] = 1.0*user_buy_history1[uid][0]/user_buy_history1[uid][1]
+            user_buy_click_ratio[uid][1] = 1.0*len(user_buy_history2[uid][0])/len(user_buy_history2[uid][1])
+        elif user_buy_history1[uid][0] == 0:
+            user_buy_click_ratio[uid][0] = 0.0
+            user_buy_click_ratio[uid][1] = 0.0
+        else:
+            user_buy_click_ratio[uid][0] = 1.0
+            user_buy_click_ratio[uid][1] = 1.0
+    return user_buy_click_ratio
 
 
 def rZero(k):

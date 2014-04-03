@@ -267,7 +267,7 @@ def genRecommendResult(sim_items, user_bought, t_val):
 
 
 def genRecommendResult1(sim_items, user_behavior, click_score, collect_score,
-        buy_score, time_beta, t_val, re_month, re_day):
+        buy_score, time_beta, t_val, re_month, re_day, target):
     user_result = defaultdict(dict)
     for uid in user_behavior:
         for entry in user_behavior[uid][0]:
@@ -304,8 +304,13 @@ def genRecommendResult1(sim_items, user_behavior, click_score, collect_score,
                     user_result[uid][pid1] = 0.0
                 user_result[uid][pid1] += sim_score*click_score*time_penality
 
-    writer = csv.writer(open(settings["CF_FEATURE_FILE"], "w"), lineterminator="\n")
-    #writer = csv.writer(open(settings["CF_FEATURE_FILE_FOR_SUBMIT"], "w"), lineterminator="\n")
+    if target == 0:
+        writer = csv.writer(open(settings["CF_FEATURE_FILE"], "w"), lineterminator="\n")
+    elif target == 1:
+        writer = csv.writer(open(settings["CF_FEATURE_FILE_FOR_SUBMIT"], "w"), lineterminator="\n")
+    else:
+        print 'Invalid train data target choice...'
+        sys.exit(1)
     recommend_result = defaultdict(list)
     for uid in user_result:
         for entry in user_result[uid].items():
@@ -320,6 +325,8 @@ def genRecommendResult1(sim_items, user_behavior, click_score, collect_score,
 
 def main():
     parser = argparse.ArgumentParser()
+    parser.add_argument('-t', type=int, action='store',
+            dest='target', help='for validation or test dataset')
     parser.add_argument('-tv', type=float, action='store', dest='threshold_val',
             help='specify threshold value.')
     parser.add_argument('-s1', type=float, action='store', dest='click_score',
@@ -337,13 +344,18 @@ def main():
     parser.add_argument('-day', type=int, action='store', dest='day',
             help='specify the day when the recommendation being generated.')
 
-    if len(sys.argv) != 17:
-        print 'Command e.g.: python itemcf.py -tv 1.5 -s1 1 -s2 2 -s3 4 -ta 0.5 -tb 0.5 -month 7 -day 15'
+    if len(sys.argv) != 19:
+        print 'Command e.g.: python itemcf.py -t (1) -tv 1.5 -s1 1 -s2 2 -s3 4 -ta 0.5 -tb 0.5 -month 7 -day 15'
         sys.exit(1)
 
     para = parser.parse_args()
-    data = [entry for entry in csv.reader(open(settings["TRAIN_DATA_FILE"]))]
-    #data = [entry for entry in csv.reader(open(settings["TAR_DATA_FILE"]))]
+    if para.target == 0:
+        data = [entry for entry in csv.reader(open(settings["TRAIN_DATA_FILE"]))]
+    elif para.target == 1:
+        data = [entry for entry in csv.reader(open(settings["TAR_DATA_FILE"]))]
+    else:
+        print 'Invalid train data target choice...'
+        sys.exit(1)
     data = [map(int, entry) for entry in data[1:]]
     user_behavior = getUserBehavior(data)
     user_inverted_index = createdInvertedIndex(data)
@@ -357,7 +369,7 @@ def main():
     #        para.month, para.day)
     recommend_result = genRecommendResult1(sim_items, user_behavior, para.click_score,
             para.collect_score, para.buy_score, para.time_beta, para.threshold_val,
-            para.month, para.day)
+            para.month, para.day, para.target)
 
     write_submission(recommend_result)
 

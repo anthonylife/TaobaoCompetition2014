@@ -26,7 +26,9 @@ from collections import defaultdict
 from tool import getCFfeature, getUserBehavior, getLastDay, genDayUPfeature
 from tool import genMonthUPfeature1, getProductPopularity, genProductFeature
 from tool import getLastWeek, getLastHalfMonth, load_factor_model, getLastDate
-from tool import genAnyDateIntervalUPfeature
+from tool import genAnyDateIntervalUPfeature, genHistoryUPfeature
+from tool import getProductBuyClickRatio, getProductBuyBuyRatio
+from tool import getUserBuyClickRatio
 
 settings = json.loads(open("../../SETTINGS.json").read())
 
@@ -72,13 +74,16 @@ def main():
         sys.exit(1)
 
     # Feature: (uid, pid)+(cf score)+(last day feature: action*2)
-    feature_num = 2 + 3*2 + 3*2 + 3*2
+    feature_num = 2 + 3*2 + 3*2 + 3*2 + 2 + 1
     #feature_num = 1+3*2
     #feature_num = 2+1+3*2
     user_behavior = getUserBehavior(data)
     product_popularity = getProductPopularity(data)
     user_factor = load_factor_model((settings["WMF_MODEL_USER_FILE"]))
     product_factor = load_factor_model((settings["WMF_MODEL_PRODUCT_FILE"]))
+    product_buy_click_ratio1,product_buy_click_ratio2= getProductBuyClickRatio(data)
+    product_buy_buy_ratio = getProductBuyBuyRatio(data)
+    user_buy_click_ratio = getUserBuyClickRatio(data)
     for i, pair in enumerate(csv.reader(open(file_name))):
         feature_idx = 2
         if para.file_num == 0 or para.file_num == 1:
@@ -167,6 +172,39 @@ def main():
         output_feature[feature_idx:feature_idx+2*3] = genMonthUPfeature1(user_behavior[uid],
                     pid, month, day, last_month, last_day)
         feature_idx += 2*3
+
+        # 7.product buy click ratio feature
+        if output_feature[feature_idx-1] > 0:
+            output_feature[feature_idx] = product_buy_click_ratio1[pid]
+            output_feature[feature_idx+1] = product_buy_click_ratio2[pid]
+        else:
+            output_feature[feature_idx] = -1
+            output_feature[feature_idx+1] = -1
+        feature_idx += 2
+
+        # 7.user buy click ratio feature
+        '''if output_feature[feature_idx-1] > 0:
+            output_feature[feature_idx] = user_buy_click_ratio[uid][0]
+            output_feature[feature_idx+1] = user_buy_click_ratio[uid][1]
+        else:
+            output_feature[feature_idx] = -1
+            output_feature[feature_idx+1] = -1
+        feature_idx += 2'''
+
+        # 8.buy buy ratio feature
+        if output_feature[feature_idx-3] > 0:
+            if pid in product_buy_buy_ratio:
+                output_feature[feature_idx] = product_buy_buy_ratio[pid]
+            else:
+                output_feature[feature_idx] = -1
+        else:
+            output_feature[feature_idx] = -1
+        feature_idx += 1
+
+        # 7.adding history interaction feature
+        '''output_feature[feature_idx:feature_idx+2*3] = genHistoryUPfeature(user_behavior[uid],
+                    pid, month, day)
+        feature_idx += 2*3'''
 
         # 7.adding every day interaction feature in last month
         '''if para.file_num == 2:

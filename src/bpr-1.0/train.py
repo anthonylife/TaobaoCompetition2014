@@ -15,7 +15,7 @@
 
 ###################################################################
 # Date: 2014/3/18                                                 #
-# Call model.py to do airwise learning                            #
+# Call model.py to do pairwise learning                           #
 ###################################################################
 
 import sys, csv, json, argparse
