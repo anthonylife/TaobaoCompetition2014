@@ -410,6 +410,10 @@ def getProductBuyClickRatio(data):
 
     product_ratio1 = {}
     for pid in product_history:
+        '''if len(product_history[pid][0]) <= 2:
+            product_ratio1[pid] = 0
+        else:
+            product_ratio1[pid] = 1.0*len(product_history[pid][1])/len(product_history[pid][0])'''
         product_ratio1[pid] = 1.0*len(product_history[pid][1])/len(product_history[pid][0])
 
     product_ratio2 = {}
@@ -424,6 +428,10 @@ def getProductBuyClickRatio(data):
                 if time < user_click_buy[uid][1][pid]:
                     product_history[pid][1] += 1
     for pid in product_history:
+        '''if product_history[pid][0] <= 3:
+            product_ratio2[pid] = 0
+        else:
+            product_ratio2[pid] = 1.0*product_history[pid][1]/product_history[pid][0]'''
         product_ratio2[pid] = 1.0*product_history[pid][1]/product_history[pid][0]
 
     return product_ratio1, product_ratio2
@@ -448,6 +456,10 @@ def getProductBuyBuyRatio(data):
                 buy_buy_cnt[pid][1] += 1
             buy_buy_cnt[pid][0] += 1
     for pid in buy_buy_cnt:
+        '''if buy_buy_cnt[pid][0] <= 3:
+            buy_buy_ratio[pid] = 0
+        else:
+            buy_buy_ratio[pid] = 1.0*buy_buy_cnt[pid][1]/buy_buy_cnt[pid][0]'''
         buy_buy_ratio[pid] = 1.0*buy_buy_cnt[pid][1]/buy_buy_cnt[pid][0]
 
     return buy_buy_ratio
@@ -539,6 +551,30 @@ def load_factor_model(model_path):
         tid = int(entry[0])
         factor[tid] = np.array(map(float, entry[1:]))
     return factor
+
+
+def getAttrDict(data, idx):
+    attr_dict = {}
+    for entry in data:
+        if entry[idx] not in attr_dict:
+            attr_dict[entry[idx]] = len(attr_dict)
+    return attr_dict
+
+
+def getClusterLabelInfo(user_cluster_file, item_cluster_file):
+    data = [map(int, entry) for entry in csv.reader(open(user_cluster_file))]
+    user_label = {}
+    for entry in data:
+        uid, label = entry
+        user_label[uid] = label
+
+    data = [map(int, entry) for entry in csv.reader(open(item_cluster_file))]
+    item_label = {}
+    for entry in data:
+        pid, label = entry
+        item_label[pid] = label
+
+    return user_label, item_label
 
 
 if __name__ == "__main__":

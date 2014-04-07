@@ -16,7 +16,9 @@
 ###################################################################
 # Date: 2014/3/28                                                 #
 # Make feature for decision/regression method                     #
-# Feature lists: 1.user and item id                               #
+#   1.user product temporal dynamic interaction feature;          #
+#   2.CF feature;                                                 #
+#   3.business logic feature.                                     #
 ###################################################################
 
 import sys, csv, json, argparse, random
@@ -28,20 +30,23 @@ from tool import genMonthUPfeature1, getProductPopularity, genProductFeature
 from tool import getLastWeek, getLastHalfMonth, load_factor_model, getLastDate
 from tool import genAnyDateIntervalUPfeature, genHistoryUPfeature
 from tool import getProductBuyClickRatio, getProductBuyBuyRatio
-from tool import getUserBuyClickRatio
+from tool import getUserBuyClickRatio, getClusterLabelInfo
 
 settings = json.loads(open("../../SETTINGS.json").read())
 
 MONTH_DAY_LENGTH = 30
-CF_TV = 2.5
+USER_CLUSTER_NUM = 20
+ITEM_CLUSTER_NUM = 50
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-d', type=int, action='store',
             dest='file_num', help='choose to generate features for which file')
+    parser.add_argument('-tv', type=float, action='store',
+            dest='threshold_val', help='specify the threshold value of using CF feature.')
 
-    if len(sys.argv) != 3:
-        print 'Command e.g.: python makeFeature.py -d 0(1,2,3)'
+    if len(sys.argv) != 5:
+        print 'Command e.g.: python makeFeature.py -d 0(1,2,3) -tv 2.5'
         sys.exit(1)
 
     para = parser.parse_args()
@@ -49,23 +54,31 @@ def main():
         file_name = settings["GBT_TRAIN_PAIR_FOR_VALIDATION"]
         writer = csv.writer(open(settings["GBT_TRAIN_FILE"], "w"), lineterminator="\n")
         cf_feature = getCFfeature(settings["CF_FEATURE_FILE"])
+        user_cluster_file = settings["USER_CLUSTER_TEST_FILE"]
+        item_cluster_file = settings["ITEM_CLUSTER_TEST_FILE"]
         data = [entry for entry in csv.reader(open(settings["TRAIN_DATA_FILE"]))]
         data = [map(int, entry) for entry in data[1:]]
     elif para.file_num == 1:
         file_name = settings["GBT_TRAIN_PAIR_FOR_TEST"]
         writer = csv.writer(open(settings["GBT_TRAIN_FILE_FOR_SUBMIT"], "w"), lineterminator="\n")
+        user_cluster_file = settings["USER_CLUSTER_TEST_FILE_FOR_SUBMIT"]
+        item_cluster_file = settings["ITEM_CLUSTER_TEST_FILE_FOR_SUBMIT"]
         cf_feature = getCFfeature(settings["CF_FEATURE_FILE_FOR_SUBMIT"])
         data = [entry for entry in csv.reader(open(settings["TAR_DATA_FILE"]))]
         data = [map(int, entry) for entry in data[1:]]
     elif para.file_num == 2:
         file_name = settings["GBT_TEST_PAIR_FOR_VALIDATION"]
         writer = csv.writer(open(settings["GBT_TEST_FILE"], "w"), lineterminator="\n")
+        user_cluster_file = settings["USER_CLUSTER_TEST_FILE"]
+        item_cluster_file = settings["ITEM_CLUSTER_TEST_FILE"]
         cf_feature = getCFfeature(settings["CF_FEATURE_FILE"])
         data = [entry for entry in csv.reader(open(settings["TRAIN_DATA_FILE"]))]
         data = [map(int, entry) for entry in data[1:]]
     elif para.file_num == 3:
         file_name = settings["GBT_TEST_PAIR_FOR_TEST"]
         writer = csv.writer(open(settings["GBT_TEST_FILE_FOR_SUBMIT"], "w"), lineterminator="\n")
+        user_cluster_file = settings["USER_CLUSTER_TEST_FILE_FOR_SUBMIT"]
+        item_cluster_file = settings["ITEM_CLUSTER_TEST_FILE_FOR_SUBMIT"]
         cf_feature = getCFfeature(settings["CF_FEATURE_FILE_FOR_SUBMIT"])
         data = [entry for entry in csv.reader(open(settings["TAR_DATA_FILE"]))]
         data = [map(int, entry) for entry in data[1:]]
@@ -74,7 +87,8 @@ def main():
         sys.exit(1)
 
     # Feature: (uid, pid)+(cf score)+(last day feature: action*2)
-    feature_num = 2 + 3*2 + 3*2 + 3*2 + 2 + 1
+    feature_num = 2 + 3*2 + 3*2 + 3*2 + 2 + 1 + USER_CLUSTER_NUM + ITEM_CLUSTER_NUM
+    #feature_num = 2 + 3*2 + 3*2 + 3*2 + 2 + 1 + USER_CLUSTER_NUM + ITEM_CLUSTER_NUM
     #feature_num = 1+3*2
     #feature_num = 2+1+3*2
     user_behavior = getUserBehavior(data)
@@ -84,6 +98,7 @@ def main():
     product_buy_click_ratio1,product_buy_click_ratio2= getProductBuyClickRatio(data)
     product_buy_buy_ratio = getProductBuyBuyRatio(data)
     user_buy_click_ratio = getUserBuyClickRatio(data)
+    user_label, item_label = getClusterLabelInfo(user_cluster_file, item_cluster_file)
     for i, pair in enumerate(csv.reader(open(file_name))):
         feature_idx = 2
         if para.file_num == 0 or para.file_num == 1:
@@ -105,7 +120,7 @@ def main():
         # 2.adding cf feature
         if uid in cf_feature:
             if pid in cf_feature[uid]:
-                if cf_feature[uid][pid] > CF_TV:
+                if cf_feature[uid][pid] > para.threshold_val:
                     output_feature[feature_idx] = 1
                 else:
                     output_feature[feature_idx] = 0
@@ -180,16 +195,7 @@ def main():
         else:
             output_feature[feature_idx] = -1
             output_feature[feature_idx+1] = -1
-        feature_idx += 2
-
-        # 7.user buy click ratio feature
-        '''if output_feature[feature_idx-1] > 0:
-            output_feature[feature_idx] = user_buy_click_ratio[uid][0]
-            output_feature[feature_idx+1] = user_buy_click_ratio[uid][1]
-        else:
-            output_feature[feature_idx] = -1
-            output_feature[feature_idx+1] = -1
-        feature_idx += 2'''
+        feature_idx += 1
 
         # 8.buy buy ratio feature
         if output_feature[feature_idx-3] > 0:
@@ -201,10 +207,27 @@ def main():
             output_feature[feature_idx] = -1
         feature_idx += 1
 
+        # 9.user cluster feature
+        output_feature[feature_idx+user_label[uid]] = 1
+        feature_idx += USER_CLUSTER_NUM
+
+        # 10. product cluster feature
+        output_feature[feature_idx+item_label[pid]] = 1
+        feature_idx += ITEM_CLUSTER_NUM
+
         # 7.adding history interaction feature
         '''output_feature[feature_idx:feature_idx+2*3] = genHistoryUPfeature(user_behavior[uid],
                     pid, month, day)
         feature_idx += 2*3'''
+
+        # 7.user buy click ratio feature
+        '''if output_feature[feature_idx-1] > 0:
+            output_feature[feature_idx] = user_buy_click_ratio[uid][0]
+            output_feature[feature_idx+1] = user_buy_click_ratio[uid][1]
+        else:
+            output_feature[feature_idx] = -1
+            output_feature[feature_idx+1] = -1
+        feature_idx += 2'''
 
         # 7.adding every day interaction feature in last month
         '''if para.file_num == 2:
