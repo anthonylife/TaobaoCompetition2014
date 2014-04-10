@@ -45,12 +45,13 @@ class MeanRegularizedMultiTaskLR():
             sys.exit(1)
 
 
-    def fit(self, features, targets):
-        self.features = [feature+[1] for feature in features]
+    def fit(self, pairs, features, targets):
+        self.features = np.array([feature+[1] for feature in features])
+        self.pairs = pairs
         if not np.all(targets>-1):
             print 'Data label = -1 or = 1'
             sys.exit(1)
-        self.targets = targets
+        self.targets = np.array(targets)
 
         if len(self.features) != len(self.targets):
             print 'Mismatch for number of features and number of targets'
@@ -59,59 +60,65 @@ class MeanRegularizedMultiTaskLR():
         self.createMultiModel()
 
         visit_idxs = [i for i in xrange(self.nInstance)]
-        last_lossval = 0.0
+        last_loglikelihood = 0.0
         for ii in xrange(self.max_niters):
             random.shuffle(visit_idxs)
-            for idx in visit_idxs:
+            for i, idx in enumerate(visit_idxs):
                 feature = self.features[idx]
                 target = self.targets[idx]
-                model_idx = self.val_map_model[feature[self.field_for_model_num]]
+                model_idx = self.val_map_model[self.pairs[idx][self.field_for_model_num]]
                 self.stochasticGraidentDescent(feature, target, model_idx)
-            cur_lossval = self.calLossVal()
-            sys.stdout.write("\r### Iteration: %d, current loss value: %f ###" % (ii+1, cur_lossval))
+                if (i+1) % 1000 == 0:
+                    sys.stdout.write("\rFINISHED PAIR NUM: %d...................................." % (i+1))
+                    sys.stdout.flush()
+            loglikelihood = self.calLikelihood()
+            sys.stdout.write("### Iteration: %d, current log likelihood: %f ###\n" % (ii+1, loglikelihood))
             sys.stdout.flush()
-            if np.abs(cur_lossval-last_lossval) < self.tol or cur_lossval < self.tol:
+            if np.abs(loglikelihood-last_loglikelihood) < self.tol:
                 break
+            else:
+                last_loglikelihood = loglikelihood
+        self.global_para = np.mean(self.model_para, 0)
         print '\nFinishing learning Mean Regularized Multi-task Learing Model'
 
 
-    def predict_prob(self, features):
-        features = [feature+[1] for feature in features]
+    def predict_proba(self, pairs, features):
+        features = np.array([feature+[1] for feature in features])
         probs = [0.0 for i in xrange(len(features))]
         for i in xrange(len(features)):
             feature = features[i]
-            if feature[self.field_for_model_num] not in self.val_map_model:
-                print 'Cannot map the feature instance to any existing single LR model'
-                sys.exit(1)
-            model_idx = self.val_map_model[feature[self.field_for_model_num]]
-            lr_val = logisticVal(self.model_para[model_idx], feature)
+            if pairs[i][self.field_for_model_num] not in self.val_map_model:
+                lr_val = logisticVal(self.global_para, feature)
+            else:
+                model_idx = self.val_map_model[pairs[i][self.field_for_model_num]]
+                lr_val = logisticVal(self.model_para[model_idx], feature)
             probs[i] = lr_val
         return probs
 
 
-    def predict(self, features):
-        features = [feature+[1] for feature in features]
+    def predict(self, pairs, features):
+        features = np.array([feature+[1] for feature in features])
         targets = [0 for i in xrange(len(features))]
         for i in xrange(len(features)):
             feature = features[i]
-            if feature[self.field_for_model_num] not in self.val_map_model:
-                print 'Cannot map the feature instance to any existing single LR model'
-                sys.exit(1)
-            model_idx = self.val_map_model[feature[self.field_for_model_num]]
-            lr_val = logisticVal(self.model_para[model_idx], feature)
+            if pairs[i][self.field_for_model_num] not in self.val_map_model:
+                lr_val = logisticVal(self.global_para, feature)
+            else:
+                model_idx = self.val_map_model[pairs[i][self.field_for_model_num]]
+                lr_val = logisticVal(self.model_para[model_idx], feature)
             if lr_val > 0.5:
                 targets[i] = 1
         return targets
 
 
     def createMultiModel(self):
-        val_set=set([entry[self.field_for_model_num] for entry in self.features])
+        val_set=set([entry[self.field_for_model_num] for entry in self.pairs])
         self.model_num = len(val_set)
         self.val_map_model = {}
         for val in val_set:
             self.val_map_model[val] = len(self.val_map_model)
-        self.feature_num = len(self.features[0])
-        self.model_para = np.array([self.para_init_method(self.feature_num) for
+        self.feature_dim = len(self.features[0])
+        self.model_para = np.array([self.para_init_method(self.feature_dim) for
             i in xrange(self.model_num)])
 
 
@@ -119,7 +126,7 @@ class MeanRegularizedMultiTaskLR():
         lr_val = logisticVal(self.model_para[model_idx], feature)
         avg_model_para = np.mean(self.model_para, 0)
         self.model_para[model_idx] = self.model_para[model_idx]\
-                + self.lr*(target*feature-lr_val*self.model_para[model_idx]
+                + self.lr*(target*feature-lr_val*feature
                 - self.C*self.model_para[model_idx]
                 - self.eta*(self.model_para[model_idx]-avg_model_para))
 
@@ -129,9 +136,26 @@ class MeanRegularizedMultiTaskLR():
         for i in xrange(self.nInstance):
             feature = self.features[i]
             target = self.targets[i]
-            model_idx = self.val_map_model[feature[self.field_for_model_num]]
+            model_idx = self.val_map_model[self.pairs[i][self.field_for_model_num]]
             lr_val = logisticVal(self.model_para[model_idx], feature)
             if np.abs(lr_val-0.5)*target>0:
                 correct_num += 1
         return 1-1.0*correct_num/self.nInstance
+
+
+    def calLikelihood(self):
+        #pred_prob = np.array([0.0 for i in xrange(self.nInstance)])
+        loglikelihood = 0.0
+        for i in xrange(self.nInstance):
+            feature = self.features[i]
+            target = self.targets[i]
+            model_idx = self.val_map_model[self.pairs[i][self.field_for_model_num]]
+            pred_prob = logisticVal(self.model_para[model_idx], feature)
+            if target == 1:
+                loglikelihood += np.log(pred_prob)
+            else:
+                loglikelihood += np.log(1-pred_prob)
+        #loglikelihood = np.dot(np.log(pred_prob).reshape(1, self.nInstance), self.targets)\
+        #        + np.dot(np.log(1-pred_prob).reshape(1, self.nInstance), 1-self.targets)
+        return loglikelihood
 

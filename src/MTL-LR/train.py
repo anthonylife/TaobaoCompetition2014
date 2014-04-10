@@ -44,6 +44,7 @@ def main():
         print 'Invalid train data target choice...'
         sys.exit(1)
     features = [map(float, entry[2:-1]) for entry in features_targets]
+    pairs = [map(int, entry[:2]) for entry in features_targets]
     targets = [map(int, entry[-1]) for entry in features_targets]
 
     classifier = MeanRegularizedMultiTaskLR(C=1,
@@ -54,7 +55,7 @@ def main():
                                     field_for_model_num=2,
                                     max_niters=500,
                                     para_init="gaussian")
-    classifier.fit(features, targets)
+    classifier.fit(pairs, features, targets)
     data_io.save_model(classifier, settings["MTLR_MODEL_FILE"])
 
 

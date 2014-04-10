@@ -61,7 +61,7 @@ def main():
         if i == 0:
             cache_uid = uid
         if uid != cache_uid:
-            predictions = classifier.predict_proba(features)
+            predictions = classifier.predict_proba(user_product_ids, features)
             #predictions = classifier.predict(features)
             for (t_uid, t_pid), pred in zip(user_product_ids, predictions):
                 writer.writerow([t_uid, t_pid, pred])
