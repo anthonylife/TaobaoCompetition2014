@@ -48,14 +48,13 @@ def getUserMultipleBehavior(data, month_num):
                     user_click[uid][pid] += 1
                     #if user_click[uid][pid] > 20:
                     #    user_click[uid][pid] = 20
-            else:
+            elif action_type == 1:
                 if uid not in user_buy:
                     user_buy[uid] = [set([]) for i in xrange(month_num)]
                 user_buy[uid][seg_num-1].add(pid)
     for uid in user_click:
         for pid in user_click[uid]:
             user_click[uid][pid] = np.log(user_click[uid][pid])
-
     return user_buy, user_click
 
 
@@ -95,11 +94,11 @@ class MBTALMF():
     def __init__(self):
         self.niters = 50
         self.ndim = 20
-        self.lr = 0.01
+        self.lr = 0.05
         self.lamda = 0.1
         self.lamda1 = 0.01
         self.eta = 0.1
-        self.theta = 0.2
+        self.theta = 0
         self.ratio = 5
         self.time_alpha = 10
 
@@ -202,14 +201,24 @@ class MBTALMF():
 
                 finished_num += 1
                 if (finished_num%1000) == 0:
-                    sys.stdout.write("\rFINISHED NUM: %d. " % finished_num)
+                    sys.stdout.write("\rFINISHED NUM: %d..." % finished_num)
                     sys.stdout.flush()
-            print("\nCurrent iteration %d, AUC is %f...\n" % (i+1, self.evaluation()))
+            #if (i+1) % 10 == 0:
+            #    print("\nCurrent iteration %d, AUC is %f...\n" % (i+1, self.evaluation()))
+        self.save_model()
 
 
     def getUserEnhancedFactor(self, uid, seg_num):
-        if uid not in self.user_buy_num or len(self.user_buy_num[uid][seg_num-2]) == 0:
-            return
+        if seg_num < 2:
+            print seg_num
+            print 'Invalid segment number'
+            sys.exit(1)
+        try:
+            if uid not in self.user_buy_num or len(self.user_buy_num[uid][seg_num-2]) == 0:
+                return 0
+        except:
+            print seg_num
+            sys.ext(1)
         total_num = 0
         for pid in self.user_buy_num[uid][seg_num-2]:
             for penality in self.user_buy_num[uid][seg_num-2][pid][1]:
@@ -221,7 +230,7 @@ class MBTALMF():
 
 
     def getProductRevenue(self, uid, pid, seg_num, tag):
-        if pid not in self.user_buy_num[uid][seg_num-2]:
+        if uid not in self.user_buy_num or pid not in self.user_buy_num[uid][seg_num-2]:
             if tag == 0:
                 self.p_revenue = 1.0
             elif tag == 1:
@@ -240,7 +249,7 @@ class MBTALMF():
             self.u_enhanced_factor, self.product_factor[ppidx])*self.p_revenue
             +np.dot(self.user_buy_factor[uidx]+self.u_enhanced_factor,
                 self.product_factor[npidx])*self.n_revenue))
-        if self.logistic_loss < 0.00001:
+        '''if self.logistic_loss < 0.00001:
             print self.user_buy_factor[uidx]
             print self.u_enhanced_factor
             print self.product_factor[ppidx]
@@ -248,7 +257,7 @@ class MBTALMF():
             print self.p_revenue
             print self.n_revenue
             print np.dot(self.user_buy_factor[uidx]+self.u_enhanced_factor, self.product_factor[ppidx])*self.p_revenue
-            #raw_input()
+            #raw_input()'''
 
     def updateRankPara(self, uid, pos_pid, neg_pid, src_seg_num):
         uidx = self.uid_dict[uid]
@@ -308,14 +317,14 @@ class MBTALMF():
                 self.product_factor[self.pid_dict[pid]] =\
                         self.product_factor[self.pid_dict[pid]]\
                         +self.lr*(self.logistic_loss*penality/total_num
-                        *(self.product_factor[self.pid_dict[pos_pid]]*self.p_revenue
-                        -self.product_factor[self.pid_dict[neg_pid]]*self.n_revenue)
+                        *(self.product_factor[ppidx]*self.p_revenue
+                        -self.product_factor[npidx]*self.n_revenue)
                         -self.lamda*self.product_factor[self.pid_dict[pid]])
 
         # update all related parameters
-        self.user_buy_factor[self.uid_dict[uid]] = self.tmp_user_buy_factor
-        self.product_factor[self.pid_dict[pos_pid]] = self.tmppos_product_factor
-        self.product_factor[self.pid_dict[neg_pid]] = self.tmpneg_product_factor
+        self.user_buy_factor[uidx] = self.tmp_user_buy_factor
+        self.product_factor[ppidx] = self.tmppos_product_factor
+        self.product_factor[npidx] = self.tmpneg_product_factor
 
         # clear
         self.u_enhanced_factor = np.zeros(self.ndim)
@@ -348,9 +357,9 @@ class MBTALMF():
                         uidx = self.uid_dict[uid]
                         ppidx = self.pid_dict[pos_pid]
                         npidx = self.pid_dict[neg_pid]
-                        self.getUserEnhancedFactor(uid, i)
-                        self.getProductRevenue(uid, pos_pid, i, 0)
-                        self.getProductRevenue(uid, neg_pid, i, 1)
+                        self.getUserEnhancedFactor(uid, i+1)
+                        self.getProductRevenue(uid, pos_pid, i+1, 0)
+                        self.getProductRevenue(uid, neg_pid, i+1, 1)
                         cmp_score = np.dot(self.user_buy_factor[uidx]
                                 +self.u_enhanced_factor,self.product_factor[ppidx])\
                                 *self.p_revenue-np.dot(self.user_buy_factor[uidx]
@@ -403,8 +412,8 @@ class MBTALMF():
             for pid in self.pid_dict:
                 uidx = self.uid_dict[uid]
                 pidx = self.pid_dict[pid]
-                self.getUserEnhancedFactor(uid, self.month+1)
-                self.getProductRevenue(uid, pid, self.month+1, 0)
+                self.getUserEnhancedFactor(uid, self.month_num+1)
+                self.getProductRevenue(uid, pid, self.month_num+1, 0)
                 score = np.dot(self.user_buy_factor[uidx]
                         +self.u_enhanced_factor,self.product_factor[pidx])\
                         *self.p_revenue

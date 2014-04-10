@@ -42,7 +42,6 @@ def main():
         print 'Command e.g.: python train.py -retrain True -init zero(gaussian) '\
                 + '-tv 0.8 -t 0(1)'
     para = parser.parse_args()
-    mbtalmf = MBTALMF()
 
     if para.target == 0:
         data_file = settings["TRAIN_DATA_FILE"]
@@ -52,6 +51,7 @@ def main():
         print 'Choice of file invalid!'
         sys.exit(1)
 
+    mbtalmf = MBTALMF()
     if para.retrain_choice == "True":
         mbtalmf.model_init(data_file, para.init_choice, para.target)
         mbtalmf.train()
