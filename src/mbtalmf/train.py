@@ -35,12 +35,14 @@ def main():
             help='specify which method to initialize model parameters')
     parser.add_argument('-tv', type=float, action='store', dest='threshold_val',
             help='specify the threshold value to generate recommendations')
+    parser.add_argument('-topk', type=int, action='store',
+            dest='topk', help='topk for recommendation result')
     parser.add_argument('-t', type=int, action='store',
             dest='target', help='for validation or test dataset')
 
-    if len(sys.argv) != 9:
+    if len(sys.argv) != 11:
         print 'Command e.g.: python train.py -retrain True -init zero(gaussian) '\
-                + '-tv 0.8 -t 0(1)'
+                + '-tv 0.8 -topk 5 -t 0(1)'
     para = parser.parse_args()
 
     if para.target == 0:
@@ -57,10 +59,14 @@ def main():
         mbtalmf.train()
         recommend_result = mbtalmf.genRecommendResult(True, data_file,
                 para.init_choice, para.threshold_val, para.target)
+        #recommend_result = mbtalmf.genTopkRecommendResult(False, data_file,
+        #        para.init_choice, para.topk, para.target)
         write_submission(recommend_result)
     else:
-        recommend_result = mbtalmf.genRecommendResult(False, data_file,
-                para.init_choice, para.threshold_val, para.target)
+        #recommend_result = mbtalmf.genRecommendResult(False, data_file,
+        #        para.init_choice, para.threshold_val, para.target)
+        recommend_result = mbtalmf.genTopkRecommendResult(False, data_file,
+                para.init_choice, para.topk, para.target)
         write_submission(recommend_result)
 
 
