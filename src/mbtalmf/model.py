@@ -92,15 +92,15 @@ def genTrainData(data, time_alpha, user_buy, user_click, pid_set, ratio, month_n
 
 class MBTALMF():
     def __init__(self):
-        self.niters = 50
+        self.niters = 200
         self.ndim = 20
-        self.lr = 0.05
-        self.lamda = 0.1
-        self.lamda1 = 0.01
-        self.eta = 0.1
+        self.lr = 0.02
+        self.lamda = 1
+        self.lamda1 = 1
+        self.eta = 0
         self.theta = 0
         self.ratio = 5
-        self.time_alpha = 10
+        self.time_alpha = 5
 
     def model_init(self, train_data_file, init_choice, target):
         self.uid_dict = {}
@@ -203,8 +203,8 @@ class MBTALMF():
                 if (finished_num%1000) == 0:
                     sys.stdout.write("\rFINISHED NUM: %d..." % finished_num)
                     sys.stdout.flush()
-            #if (i+1) % 10 == 0:
-            #    print("\nCurrent iteration %d, AUC is %f...\n" % (i+1, self.evaluation()))
+            if (i+1) % 50 == 0:
+                print("\nCurrent iteration %d, AUC is %f...\n" % (i+1, self.evaluation()))
         self.save_model()
 
 
@@ -403,7 +403,8 @@ class MBTALMF():
             self.revenue_para[self.pid_dict[pid]] = float(entry[1])
 
 
-    def genRecommendResult(self, restart, train_data_file, init_choice, threshold_val, target):
+    def genRecommendResult(self, restart, train_data_file, init_choice,
+            threshold_val, target):
         if not restart:
             self.model_init(train_data_file, init_choice, target)
             self.load_model()
@@ -420,3 +421,27 @@ class MBTALMF():
                 if score > threshold_val:
                     recommend_result[uid].append(pid)
         return recommend_result
+
+    def genTopkRecommendResult(self, restart, train_data_file, init_choice,
+            topk, target):
+        if not restart:
+            self.model_init(train_data_file, init_choice, target)
+            self.load_model()
+        recommend_result = defaultdict(list)
+        for uid in self.uid_dict:
+            tmp_result = []
+            sorted_result = []
+            for pid in self.pid_dict:
+                uidx = self.uid_dict[uid]
+                pidx = self.pid_dict[pid]
+                self.getUserEnhancedFactor(uid, self.month_num+1)
+                self.getProductRevenue(uid, pid, self.month_num+1, 0)
+                score = np.dot(self.user_buy_factor[uidx]
+                        +self.u_enhanced_factor,self.product_factor[pidx])\
+                        *self.p_revenue
+                tmp_result.append([pid, score])
+            tmp_result = sorted(tmp_result, key=lambda x:x[1], reverse=True)
+            sorted_result = [entry[0] for entry in tmp_result]
+            recommend_result[uid] = sorted_result[:topk]
+        return recommend_result
+
