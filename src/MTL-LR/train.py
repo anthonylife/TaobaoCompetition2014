@@ -21,7 +21,8 @@
 import csv, json, sys, argparse
 sys.path.append("../")
 import data_io
-from multiTaskLR import MeanRegularizedMultiTaskLR
+#from multiTaskLR import MeanRegularizedMultiTaskLR
+from multiTaskLR1 import MeanRegularizedMultiTaskLR
 
 settings = json.loads(open("../../SETTINGS.json").read())
 
@@ -47,13 +48,14 @@ def main():
     pairs = [map(int, entry[:2]) for entry in features_targets]
     targets = [map(int, entry[-1]) for entry in features_targets]
 
-    classifier = MeanRegularizedMultiTaskLR(C=1,
+    classifier = MeanRegularizedMultiTaskLR(C=0.1,
                                     tol=0.0001,
                                     intercept_scaling=1,
-                                    lr=0.01,
-                                    eta=1,
+                                    lr=0.02,
+                                    eta=0.1,
                                     field_for_model_num=2,
-                                    max_niters=500,
+                                    max_niters=200,
+                                    confidence=20,
                                     para_init="gaussian")
     classifier.fit(pairs, features, targets)
     data_io.save_model(classifier, settings["MTLR_MODEL_FILE"])

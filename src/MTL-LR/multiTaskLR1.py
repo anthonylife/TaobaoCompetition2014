@@ -18,7 +18,7 @@
 # Mean Regularized Multi-Task Learning with LR model              #
 ###################################################################
 
-import sys, json, random
+import csv, sys, json, random
 sys.path.append("../")
 import numpy as np
 from tool import rZero, rGaussian, logisticVal
@@ -28,7 +28,8 @@ settings = json.loads(open("../../SETTINGS.json").read())
 
 class MeanRegularizedMultiTaskLR():
     def __init__(self, C=1, tol=0.0001, intercept_scaling=1, lr = 0.01, eta=1,
-            field_for_model_num=1, max_niters = 500, confidence = 50, para_init="gaussian"):
+            field_for_model_num=1, max_niters = 500, confidence = 50,
+            para_init="gaussian", global_model_file=settings["GBT_MODEL_PARA_FILE"]):
         self.C = C
         self.tol = tol
         self.intercept = intercept_scaling
@@ -37,6 +38,7 @@ class MeanRegularizedMultiTaskLR():
         self.field_for_model_num = field_for_model_num-1
         self.max_niters = max_niters
         self.confidence = confidence
+        self.global_model_file = global_model_file
         if para_init == settings["MTLR_INIT_GAUSSIAN"]:
             self.para_init_method = rGaussian
         elif para_init == settings["MTLR_INIT_ZERO"]:
@@ -47,7 +49,7 @@ class MeanRegularizedMultiTaskLR():
 
 
     def fit(self, pairs, features, targets):
-        self.features = np.array([feature+[1] for feature in features])
+        self.features = np.array([feature for feature in features])
         self.pairs = pairs
         if not np.all(targets>-1):
             print 'Data label = -1 or = 1'
@@ -58,8 +60,14 @@ class MeanRegularizedMultiTaskLR():
             print 'Mismatch for number of features and number of targets'
             sys.exit(1)
         self.nInstance = len(self.targets)
-        #self.createMultiModel()
         self.createMultiModel1()
+        global_para = np.array([map(float, entry) for entry in csv.reader(open(self.global_model_file))])
+        self.global_para = global_para[0]
+        if len(self.global_para) != self.feature_dim:
+            print self.global_para
+            print len(self.global_para), self.feature_dim
+            print 'Global parameter dimension and local parameter mismatch...'
+            sys.exit(1)
 
         visit_idxs = [i for i in xrange(self.nInstance)]
         last_loglikelihood = 0.0
@@ -83,12 +91,12 @@ class MeanRegularizedMultiTaskLR():
                 break
             else:
                 last_loglikelihood = loglikelihood
-        self.global_para = np.mean(self.model_para, 0)
         print '\nFinishing learning Mean Regularized Multi-task Learing Model'
 
 
     def predict_proba(self, pairs, features):
-        features = np.array([feature+[1] for feature in features])
+        #features = np.array([feature+[1] for feature in features])
+        features = np.array([feature for feature in features])
         probs = [0.0 for i in xrange(len(features))]
         for i in xrange(len(features)):
             feature = features[i]
@@ -102,7 +110,8 @@ class MeanRegularizedMultiTaskLR():
 
 
     def predict(self, pairs, features):
-        features = np.array([feature+[1] for feature in features])
+        #features = np.array([feature+[1] for feature in features])
+        features = np.array([feature for feature in features])
         targets = [0 for i in xrange(len(features))]
         for i in xrange(len(features)):
             feature = features[i]
@@ -150,11 +159,10 @@ class MeanRegularizedMultiTaskLR():
 
     def stochasticGraidentDescent(self, feature, target, model_idx):
         lr_val = logisticVal(self.model_para[model_idx], feature)
-        avg_model_para = np.mean(self.model_para, 0)
         self.model_para[model_idx] = self.model_para[model_idx]\
                 + self.lr*(target*feature-lr_val*feature
                 - self.C*self.model_para[model_idx]
-                - self.eta*(self.model_para[model_idx]-avg_model_para))
+                - self.eta*(self.model_para[model_idx]-self.global_para))
 
 
     def calLossVal(self):
